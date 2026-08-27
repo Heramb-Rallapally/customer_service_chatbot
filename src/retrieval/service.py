@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Optional
 
 from src.models import KnowledgeDocument, RetrievalResult
@@ -37,10 +37,15 @@ class RetrievalService:
 
     def search(
         self,
+        *,
         query: str,
-        filters: Optional[RetrievalFilters] = None,
-        top_k: int = 5,
-    ) -> list[RetrievalResult]:
-        """Retrieve the top results through the public conversation-facing API."""
+        filters: Mapping[str, str],
+        top_k: int,
+    ) -> Sequence[RetrievalResult]:
+        """Retrieve results through the Member 3 conversation-facing port.
 
-        return self.retrieve(query, k=top_k, filters=filters)
+        Scores are normalized to `[0, 1]`, with higher scores indicating more
+        relevant results, irrespective of the configured vector metric.
+        """
+
+        return self.retrieve(query, k=top_k, filters=RetrievalFilters(**dict(filters)))

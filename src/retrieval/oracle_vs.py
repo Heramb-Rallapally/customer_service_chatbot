@@ -10,7 +10,7 @@ from src.models import KnowledgeDocument, RetrievalResult
 from .exceptions import VectorStoreError
 from .filters import RetrievalFilters
 from .in_memory import _document_metadata, _matches
-from .metrics import SimilarityMetric
+from .metrics import OracleScoreSemantics, SimilarityMetric, normalized_oracle_score
 
 
 class OracleVSVectorStore:
@@ -18,13 +18,22 @@ class OracleVSVectorStore:
 
     The caller owns construction of the OracleVS instance and database
     connection. This keeps database lifecycle/schema ownership in `src/db`.
+
+    Callers must explicitly declare whether backend scores are distances or
+    similarities. Returned ``RetrievalResult`` scores are normalized to
+    `[0, 1]`, where higher is always better.
     """
 
     def __init__(
-        self, backend: Any, *, metric: SimilarityMetric = SimilarityMetric.COSINE
+        self,
+        backend: Any,
+        *,
+        metric: SimilarityMetric = SimilarityMetric.COSINE,
+        score_semantics: OracleScoreSemantics,
     ) -> None:
         self._backend = backend
         self.metric = SimilarityMetric(metric)
+        self.score_semantics = OracleScoreSemantics(score_semantics)
 
     def upsert(
         self, documents: Sequence[KnowledgeDocument], embeddings: Sequence[Sequence[float]]
@@ -50,27 +59,41 @@ class OracleVSVectorStore:
         method = getattr(self._backend, "similarity_search_with_score_by_vector", None)
         if method is None:
             raise VectorStoreError("OracleVS backend must support vector similarity search")
+        requested_k = k * 5 if filters else k
         try:
-            pairs = method(list(query_embedding), k=k, filter=filters.as_metadata() if filters else None)
+            pairs = method(
+                list(query_embedding),
+                k=requested_k,
+                filter=filters.as_metadata() if filters else None,
+            )
         except TypeError:
             # Older LangChain releases lack a metadata-filter keyword.
             try:
-                pairs = method(list(query_embedding), k=k)
+                # Over-fetch before applying exact filters locally. This avoids
+                # losing matching documents that fall below an unfiltered top-k.
+                pairs = method(list(query_embedding), k=requested_k)
             except Exception as exc:
                 raise VectorStoreError("OracleVS similarity search failed") from exc
         except Exception as exc:
             raise VectorStoreError("OracleVS similarity search failed") from exc
         results = []
-        for document, score in pairs:
+        for document, raw_distance in pairs:
             metadata = dict(getattr(document, "metadata", {}))
             if filters and not _matches(metadata, filters):
                 continue
+            if not metadata.get("source"):
+                raise VectorStoreError("OracleVS result is missing source metadata")
             document_id = str(metadata.get("document_id") or metadata.get("id") or "")
             if not document_id:
                 raise VectorStoreError("OracleVS result is missing document_id metadata")
-            results.append(RetrievalResult(document_id=document_id, content=document.page_content, score=float(score), metadata=metadata))
-        # OracleVS already returns nearest neighbours in rank order. Preserve that
-        # ordering because its score direction is backend/version dependent. The
-        # backend must be configured with this adapter's selected metric when it
-        # is constructed by the database integration layer.
-        return results[:k]
+            results.append(
+                RetrievalResult(
+                    document_id=document_id,
+                    content=document.page_content,
+                    score=normalized_oracle_score(
+                        float(raw_distance), self.metric, self.score_semantics
+                    ),
+                    metadata=metadata,
+                )
+            )
+        return sorted(results, key=lambda result: result.score, reverse=True)[:k]

@@ -24,14 +24,20 @@ python -m pytest
 
 `src/retrieval/` exposes a mock-friendly `RetrievalService`, metadata filters,
 and deterministic in-memory implementations for local development. Its public
-conversation-facing API is `search(query, filters=None, top_k=5)`. It supports
-COSINE, EUCLIDEAN, and DOT vector metrics; in-memory scores consistently rank
-larger values first. Production
+conversation-facing API is
+`search(*, query: str, filters: Mapping[str, str], top_k: int)`. It supports
+COSINE, EUCLIDEAN, and DOT vector metrics; all returned scores are normalized
+to `[0, 1]`, where higher is better. Production
 integration uses `OCIEmbeddingService` and an injected LangChain OracleVS
 instance through `OracleVSVectorStore`; database connection and schema setup
 remain owned by the database module. OCI use requires `OCI_COMPARTMENT_ID`,
 `EMBEDDING_MODEL`, and a valid OCI profile. Retrieval evaluation provides
 Recall@K and MRR against explicit query-to-document relevance labels.
+
+When constructing `OracleVSVectorStore`, database integration must explicitly
+set `score_semantics` to match the backend's raw score convention (`DISTANCE`
+or `SIMILARITY`). This prevents backend-specific score direction from leaking
+into the shared retrieval contract.
 
 ## Repository layout and ownership
 

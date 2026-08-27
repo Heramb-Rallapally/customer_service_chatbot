@@ -11,7 +11,7 @@ from src.models import KnowledgeDocument, RetrievalResult
 
 from .exceptions import VectorStoreError
 from .filters import RetrievalFilters
-from .metrics import SimilarityMetric
+from .metrics import SimilarityMetric, normalized_similarity
 
 
 class HashEmbeddingService:
@@ -39,8 +39,8 @@ class HashEmbeddingService:
 class InMemoryVectorStore:
     """Deterministic vector store implementing the production store port.
 
-    It is intended for tests and local development.  Scores always use a
-    higher-is-better convention, including for Euclidean distance.
+    It is intended for tests and local development. Scores are normalized to
+    `[0, 1]`, where higher scores are always better.
     """
 
     def __init__(self, metric: SimilarityMetric = SimilarityMetric.COSINE) -> None:
@@ -100,9 +100,9 @@ def _similarity(
     left: Sequence[float], right: Sequence[float], metric: SimilarityMetric
 ) -> float:
     if metric is SimilarityMetric.COSINE:
-        return _cosine_similarity(left, right)
+        return normalized_similarity(_cosine_similarity(left, right), metric)
     if metric is SimilarityMetric.DOT:
-        return sum(x * y for x, y in zip(left, right))
+        return normalized_similarity(sum(x * y for x, y in zip(left, right)), metric)
     # Convert distance to a bounded similarity so callers can consistently
     # interpret greater scores as better results.
     distance = math.sqrt(sum((x - y) ** 2 for x, y in zip(left, right)))
