@@ -1,3 +1,4 @@
 pydantic>=2.5,<3
 pytest>=7.4,<9
-
+# Required only when instantiating OCIEmbeddingService.from_settings().
+oci>=2.0,<3
