@@ -1,0 +1,421 @@
+CUSTOMER SERVICE CHATBOT — TEAM DEVELOPMENT GUIDE
+
+Repository:
+https://github.com/Heramb-Rallapally/customer_service_chatbot
+
+The shared foundation is already on the dev branch. It includes AGENTS.md, shared Pydantic contracts under src/models/, project structure, configuration, .env.example, .gitignore, and initial tests.
+
+============================================================
+1. GIT WORKFLOW
+============================================================
+
+Branches:
+main
+  ↓
+dev
+  ├── feature/ingestion              Member 1
+  ├── feature/retrieval              Member 2
+  ├── feature/conversation-engine    Member 3
+  ├── feature/proactive              Member 4
+  └── feature/api-ui                 Member 5
+
+Before starting:
+git checkout dev
+git pull origin dev
+git checkout -b feature/<your-module>
+
+Never work directly on main or dev.
+
+Shared contracts are under:
+src/models/
+
+Do NOT create duplicate versions of:
+- KnowledgeDocument
+- RetrievalResult
+- ConversationState
+- ProactiveAnalysis
+- ChatResponse
+
+============================================================
+2. COMMON CODEX RULES
+============================================================
+
+Every member must tell Codex to:
+
+1. Read AGENTS.md completely.
+2. Inspect the current repository and src/models/.
+3. Reuse existing shared contracts.
+4. Work only within the assigned module.
+5. Use interfaces/mocks for dependencies owned by another member.
+6. Never implement another member's functionality.
+7. Do not add unnecessary dependencies.
+8. Do not modify shared models for convenience.
+9. Never commit credentials or .env.
+10. Add tests.
+
+Before committing:
+pytest -q
+git diff
+git status
+
+PR direction:
+feature/<module> → dev
+
+Never merge feature branches directly into main.
+
+============================================================
+3. MEMBER 1 — KNOWLEDGE INGESTION
+============================================================
+
+Branch:
+feature/ingestion
+
+Owns:
+src/ingestion/
+
+Responsibilities:
+- Product documentation
+- FAQs
+- Historical support tickets
+- Knowledge-base articles
+- Troubleshooting guides
+- Video transcripts
+- Parsing/cleaning
+- Chunking
+- Metadata extraction
+- Product categorization
+- Issue type
+- Severity
+- Resolution category
+- Version mapping
+
+CODEX PROMPT:
+
+You are Member 1 implementing the Knowledge Ingestion module for our Customer Service Chatbot.
+
+Read AGENTS.md completely and inspect the repository and src/models/ before coding.
+
+My branch is feature/ingestion.
+
+Work ONLY on the ingestion module. Use the existing KnowledgeDocument contract; do not create a duplicate.
+
+Implement a modular pipeline supporting product documentation, FAQs, historical support tickets, knowledge-base articles, troubleshooting guides, and video transcripts.
+
+Support loading, text cleaning/normalization, deterministic chunking with configurable chunk size/overlap, metadata extraction, product classification, issue type, severity, resolution category, version mapping, and output validation.
+
+Preserve useful metadata on every chunk.
+
+The output must be validated KnowledgeDocument objects suitable for Member 2's retrieval layer.
+
+Do NOT implement OracleVS, embeddings, retrieval, conversation, proactive support, API/UI, or analytics.
+
+Use interfaces/mocks for unavailable external dependencies.
+
+Add tests for loading, cleaning, chunking, metadata preservation/extraction, invalid/empty documents, and deterministic output. Tests must not require OCI credentials or external services.
+
+Run pytest -q, inspect git diff/status, and report files, architecture, tests, and integration assumptions.
+
+============================================================
+4. MEMBER 2 — RETRIEVAL / ORACLEVS
+============================================================
+
+Branch:
+feature/retrieval
+
+Owns:
+src/retrieval/
+
+Responsibilities:
+- Oracle AI Database 23ai
+- OracleVS / LangChain
+- OCI Generative AI Embeddings
+- Vector insertion
+- Batch insertion
+- Similarity search
+- Metadata filtering
+- Top-k retrieval
+- Result normalization
+- COSINE, EUCLIDEAN, DOT
+
+CODEX PROMPT:
+
+You are Member 2 implementing the Retrieval Layer for our Customer Service Chatbot.
+
+Read AGENTS.md completely and inspect the repository and src/models/.
+
+My branch is feature/retrieval.
+
+Work ONLY on retrieval. Use the existing KnowledgeDocument and RetrievalResult contracts; do not create duplicates.
+
+Implement the OracleVS-based retrieval layer using Oracle AI Database 23ai, OracleVS/LangChain, and OCI Generative AI Embeddings.
+
+Expose a clean retriever interface conceptually like:
+search(query, filters=None, top_k=5)
+
+Member 3 must be able to call the retriever without knowing OracleVS internals.
+
+Implement embedding generation, vector/document insertion, batch insertion, similarity search, metadata filtering, top-k retrieval, result normalization, and required similarity metrics COSINE, EUCLIDEAN, DOT.
+
+Keep OCI/database initialization isolated and configuration-driven. Never hard-code credentials.
+
+Return the existing RetrievalResult model with document_id, content, score, and metadata.
+
+Unit tests must use mocks/fakes and must not require a live Oracle database or OCI credentials.
+
+Test insertion, batch insertion, search, filtering, top-k, metrics, empty results, malformed inputs, and result conversion.
+
+Do NOT implement ingestion, conversation, proactive support, API/UI, or analytics.
+
+Run pytest -q and inspect git diff/status.
+
+============================================================
+5. MEMBER 3 — CONVERSATION ENGINE
+============================================================
+
+Branch:
+feature/conversation-engine
+
+Owns:
+src/conversation/
+
+Responsibilities:
+- Multi-turn state
+- Memory
+- Context retention
+- Intent handling
+- Clarification
+- Retrieval orchestration
+- LLM context
+- Troubleshooting tracking
+- Resolution confirmation
+- Escalation orchestration
+- Confidence/fallback handling
+
+CODEX PROMPT:
+
+You are Member 3 implementing the Conversation Engine for our Customer Service Chatbot.
+
+Read AGENTS.md completely. Inspect the repository and especially src/models/ before coding.
+
+My branch is feature/conversation-engine.
+
+Use the existing shared contracts. Do NOT create duplicate models.
+
+Work ONLY on src/conversation/.
+
+Implement conversation state management, memory, multi-turn context, intent handling, missing-information detection, clarification questions, retrieval orchestration, LLM response orchestration, troubleshooting-step tracking, resolution confirmation, escalation, and confidence/fallback handling.
+
+Support a state flow similar to:
+NEW → UNDERSTANDING → NEEDS_CLARIFICATION → READY_TO_RESOLVE → TROUBLESHOOTING → AWAITING_CONFIRMATION → RESOLVED
+
+Also support UNRESOLVED → ESCALATED when appropriate.
+
+The engine must retain context across turns and must not repeatedly ask for information already known.
+
+Use a Retriever interface rather than accessing OracleVS directly:
+retriever.search(query=..., filters=..., top_k=...)
+
+Use the existing RetrievalResult.
+
+Use an LLM interface rather than implementing another LLM infrastructure layer.
+
+Track troubleshooting steps so failed/attempted steps are not blindly repeated.
+
+Do not mark an issue resolved merely because a response was generated. Require user confirmation.
+
+Consume the existing ProactiveAnalysis contract. Do NOT implement sentiment analysis.
+
+Support escalation for explicit human-support requests, high frustration, repeated failed troubleshooting, high severity, unsupported issues, and low-confidence/no useful retrieval.
+
+Do not hallucinate when retrieval is empty or low-confidence.
+
+Create mocks/interfaces for dependencies that other team members have not implemented yet.
+
+Add tests for context retention, clarification, no repeated questions, intent, retrieval integration, LLM integration, troubleshooting, resolution confirmation, failed resolution, escalation, high frustration, empty retrieval, low confidence, and follow-up questions.
+
+Create at least one mocked multi-turn end-to-end test.
+
+Do not modify other members' modules unless absolutely required for an integration contract.
+
+Run pytest -q and inspect git diff/status.
+
+============================================================
+6. MEMBER 4 — PROACTIVE SUPPORT
+============================================================
+
+Branch:
+feature/proactive
+
+Owns:
+src/proactive/
+
+Responsibilities:
+- Sentiment detection
+- Frustration scoring
+- Escalation detection
+- Quick resolution suggestions
+- Related article recommendations
+- Similar issue matching
+- Historical solution signals
+- Customer history signals where available
+
+CODEX PROMPT:
+
+You are Member 4 implementing the Proactive Support module.
+
+Read AGENTS.md and inspect the repository and src/models/ before coding.
+
+My branch is feature/proactive.
+
+Work ONLY on src/proactive/.
+
+Use the existing ProactiveAnalysis contract. Do not create a duplicate.
+
+Implement sentiment analysis, frustration scoring, escalation detection, quick resolution suggestions, related article recommendations, similar issue signals, historical solution signals, and customer history signals where available.
+
+Use OCI Generative AI for production sentiment analysis as specified by the project, but isolate it behind an interface.
+
+Produce frustration_score in the range 0.0–1.0.
+
+Consider repeated failures, negative language, dissatisfaction, repeated requests, and explicit escalation requests.
+
+Support escalation signals for high frustration, human-support requests, repeated failed troubleshooting, high severity, and unsupported issues.
+
+Do not implement actual ticket routing.
+
+Use interfaces for retrieval/history dependencies. Do not implement another vector store.
+
+Member 3 should be able to call the service conceptually as:
+proactive_service.analyze(message=..., conversation=...)
+
+Unit tests must use mocks and not require OCI credentials.
+
+Test sentiment, frustration, escalation, explicit human-support requests, repeated failures, invalid/empty inputs, and recommendations.
+
+Do not modify the Conversation Engine.
+
+Run pytest -q and inspect git diff/status.
+
+============================================================
+7. MEMBER 5 — API / UI / ANALYTICS
+============================================================
+
+Branch:
+feature/api-ui
+
+Owns:
+src/api/
+src/ui/
+and analytics-related implementation.
+
+Responsibilities:
+- FastAPI
+- Chat API
+- Streamlit/React UI
+- Conversation API integration
+- Analytics dashboard
+- Response presentation
+- Related articles
+- Escalation display
+- Metrics visualization
+
+CODEX PROMPT:
+
+You are Member 5 implementing the API, UI, and Analytics layer.
+
+Read AGENTS.md completely and inspect the repository and src/models/.
+
+My branch is feature/api-ui.
+
+Work primarily within src/api/, src/ui/, and analytics-related files.
+
+Use the existing ChatResponse and ConversationState contracts. Do not create duplicates.
+
+Implement a clean FastAPI chat endpoint conceptually:
+POST /chat
+
+Accept conversation_id, user_message, and user_id where applicable. Return ChatResponse.
+
+The API must call the Conversation Engine. Do NOT duplicate conversation logic in API routes.
+
+Provide a simple customer-support chatbot UI showing conversation messages, assistant responses, citations, suggested actions, related articles, escalation indication, and confidence where appropriate.
+
+Implement analytics for resolution rate, response time, customer satisfaction, common issues, and escalation trends using Pandas/Plotly as specified.
+
+Use mock/sample data during development if real backend metrics are unavailable. Do not fabricate production results.
+
+Unit tests should use mocks for the Conversation Engine and must not require OCI credentials.
+
+Do NOT implement ingestion, retrieval, conversation logic, or sentiment analysis.
+
+Run pytest -q and inspect git diff/status.
+
+============================================================
+8. INTEGRATION FLOW
+============================================================
+
+Member 1
+  ↓
+KnowledgeDocument
+  ↓
+Member 2
+  ↓
+RetrievalResult
+  ↓
+Member 3
+  ↓
+ChatResponse
+  ↓
+Member 5
+
+Member 4
+  ↓
+ProactiveAnalysis
+  ↓
+Member 3
+
+Important:
+- Interfaces are more important than internal implementation details.
+- Consume shared contracts instead of importing another member's internal implementation.
+- If a dependency is not ready, mock it.
+- Do not bypass another member's interface.
+- Do not change shared contracts without discussing with the team.
+- Do not restructure another member's module.
+
+============================================================
+9. PR CHECKLIST
+============================================================
+
+Before opening a PR:
+
+1. Pull latest dev.
+2. Rebase/merge dev as agreed by the team.
+3. Run pytest -q.
+4. Check git diff.
+5. Check git status.
+6. Ensure no credentials/.env are included.
+7. Ensure only intended files changed.
+8. Confirm shared contracts remain compatible.
+
+PR:
+feature/<module> → dev
+
+PR description:
+
+## What was implemented
+## Files changed
+## Tests added
+## Test result
+## Shared contracts used
+## Integration assumptions
+## Known limitations
+
+============================================================
+10. GOLDEN RULE
+============================================================
+
+Do not ask Codex to build the entire chatbot.
+
+Each member should give Codex the role-specific prompt above, let it inspect the current repository, and implement ONLY their assigned module.
+
+The goal is parallel development with clean integration, not five independent applications.
