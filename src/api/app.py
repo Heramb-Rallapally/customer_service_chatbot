@@ -6,7 +6,7 @@ import logging
 from threading import RLock
 from typing import Any, Callable, Optional
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
 from src.app import (
     ApplicationConfigurationError,
@@ -18,15 +18,39 @@ from src.conversation import ConversationOwnershipError
 from src.models import ChatResponse
 
 from .schemas import ChatRequest
+from .identity import (
+    AuthenticatedIdentity,
+    AuthenticationRequiredError,
+    IdentityProvider,
+    identity_provider_from_settings,
+)
 from .service import ChatApplicationService, ConversationServiceUnavailableError
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(chat_service: ChatApplicationService) -> Any:
+def create_app(
+    chat_service: ChatApplicationService,
+    *,
+    identity_provider: Optional[IdentityProvider] = None,
+) -> Any:
     """Create the HTTP app with injected conversation orchestration."""
 
     app = FastAPI(title="Customer Service Chatbot API", version="0.1.0")
+    provider = identity_provider or identity_provider_from_settings(get_settings())
+
+    def get_authenticated_identity(request: Request) -> AuthenticatedIdentity:
+        try:
+            return provider.get_identity(request)
+        except AuthenticationRequiredError as exc:
+            raise HTTPException(status_code=401, detail="Authentication is required.") from exc
+        except Exception as exc:
+            logger.exception("Identity provider failed")
+            raise HTTPException(
+                status_code=503,
+                detail="The support service is temporarily unavailable. Please try again.",
+            ) from exc
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -35,9 +59,16 @@ def create_app(chat_service: ChatApplicationService) -> Any:
         return {"status": "ok"}
 
     @app.post("/chat", response_model=ChatResponse)
-    def post_chat(request: ChatRequest, response: Response) -> ChatResponse:
+    def post_chat(
+        request: ChatRequest,
+        response: Response,
+        identity: AuthenticatedIdentity = Depends(get_authenticated_identity),
+    ) -> ChatResponse:
         try:
-            chat_response = chat_service.chat(request)
+            if request.user_id is not None and request.user_id != identity.user_id:
+                raise ConversationOwnershipError("request identity does not match")
+            effective_request = request.model_copy(update={"user_id": identity.user_id})
+            chat_response = chat_service.chat(effective_request)
             resolution_status = chat_service.resolution_status(request.conversation_id)
             if resolution_status is not None:
                 response.headers["X-Resolution-Status"] = resolution_status
@@ -114,12 +145,14 @@ class _LazyChatApplicationService:
 
 
 def create_runtime_app(
-    *, application_factory: Callable[[], ApplicationServices] = create_application
+    *,
+    application_factory: Callable[[], ApplicationServices] = create_application,
+    identity_provider: Optional[IdentityProvider] = None,
 ) -> Any:
     """Create the runnable API without initializing OCI or Oracle on import."""
 
     lazy_service = _LazyChatApplicationService(application_factory)
-    app = create_app(lazy_service)
+    app = create_app(lazy_service, identity_provider=identity_provider)
     app.add_event_handler("shutdown", lazy_service.close)
     return app
 

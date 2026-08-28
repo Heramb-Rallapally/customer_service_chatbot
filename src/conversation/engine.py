@@ -29,6 +29,7 @@ from .exceptions import ConversationOwnershipError
 from .intent import ConversationIntent, IntentDetector
 from .interfaces import (
     ConversationMemory,
+    ConversationSnapshot,
     GeneratedResponse,
     GenerationContext,
     LLMService,
@@ -116,9 +117,16 @@ class ConversationEngine:
         if not user_message:
             raise ValueError("user_message must not be empty")
 
-        state = self._memory.load(conversation_id)
+        snapshot_loader = getattr(self._memory, "load_with_version", None)
+        snapshot: Optional[ConversationSnapshot] = (
+            snapshot_loader(conversation_id) if callable(snapshot_loader) else None
+        )
+        state = snapshot.state if snapshot is not None else self._memory.load(conversation_id)
+        expected_memory_version = snapshot.version if snapshot is not None else None
         if state is None:
             state = ConversationState(conversation_id=conversation_id, user_id=user_id)
+            if callable(snapshot_loader):
+                expected_memory_version = 0
         elif state.user_id is not None:
             if user_id != state.user_id:
                 raise ConversationOwnershipError(
@@ -148,6 +156,7 @@ class ConversationEngine:
                     message="Great — I've marked this issue as resolved.",
                     confidence=1.0,
                 ),
+                expected_memory_version=expected_memory_version,
             )
 
         proactive = self._analyze_proactive(user_message, state)
@@ -161,6 +170,7 @@ class ConversationEngine:
                     escalation_required=True,
                     related_articles=proactive.recommended_articles,
                 ),
+                expected_memory_version=expected_memory_version,
             )
 
         clarification = self._clarification_planner.next_question(state)
@@ -172,6 +182,7 @@ class ConversationEngine:
                     message=clarification.question,
                     related_articles=proactive.recommended_articles,
                 ),
+                expected_memory_version=expected_memory_version,
             )
 
         state.resolution_status = ResolutionStatus.READY_TO_RESOLVE
@@ -193,6 +204,7 @@ class ConversationEngine:
                 state,
                 proactive.recommended_articles,
                 "The support knowledge service is temporarily unavailable.",
+                expected_memory_version=expected_memory_version,
             )
 
         retrieval_confidence = self._retrieval_confidence(results)
@@ -201,6 +213,7 @@ class ConversationEngine:
                 state,
                 proactive.recommended_articles,
                 "I couldn't find sufficient supported knowledge for this issue.",
+                expected_memory_version=expected_memory_version,
             )
         if retrieval_confidence < self._options.medium_confidence:
             return self._knowledge_fallback(
@@ -208,6 +221,7 @@ class ConversationEngine:
                 proactive.recommended_articles,
                 "The available knowledge has low confidence for this issue.",
                 confidence=retrieval_confidence,
+                expected_memory_version=expected_memory_version,
             )
 
         generation_context = self._generation_context(
@@ -239,6 +253,7 @@ class ConversationEngine:
                     confidence=retrieval_confidence,
                     related_articles=proactive.recommended_articles,
                 ),
+                expected_memory_version=expected_memory_version,
             )
 
         state, actions = self._troubleshooting.add_suggestions(
@@ -260,6 +275,7 @@ class ConversationEngine:
                     ),
                     related_articles=proactive.recommended_articles,
                 ),
+                expected_memory_version=expected_memory_version,
             )
 
         state.resolution_status = ResolutionStatus.AWAITING_CONFIRMATION
@@ -272,6 +288,7 @@ class ConversationEngine:
                 confidence=self._combined_confidence(retrieval_confidence, generated),
                 related_articles=proactive.recommended_articles,
             ),
+            expected_memory_version=expected_memory_version,
         )
 
     def get_state(self, conversation_id: str) -> Optional[ConversationState]:
@@ -350,6 +367,7 @@ class ConversationEngine:
         related_articles: list[ArticleReference],
         explanation: str,
         confidence: Optional[float] = None,
+        expected_memory_version: Optional[int] = None,
     ) -> ChatResponse:
         state.resolution_status = ResolutionStatus.ESCALATED
         return self._finish(
@@ -363,13 +381,24 @@ class ConversationEngine:
                 confidence=confidence,
                 related_articles=related_articles,
             ),
+            expected_memory_version=expected_memory_version,
         )
 
-    def _finish(self, state: ConversationState, response: ChatResponse) -> ChatResponse:
+    def _finish(
+        self,
+        state: ConversationState,
+        response: ChatResponse,
+        *,
+        expected_memory_version: Optional[int] = None,
+    ) -> ChatResponse:
         state.messages.append(
             ConversationMessage(role=MessageRole.ASSISTANT, content=response.message)
         )
-        self._memory.save(state)
+        versioned_saver = getattr(self._memory, "save_with_version", None)
+        if expected_memory_version is not None and callable(versioned_saver):
+            versioned_saver(state, expected_version=expected_memory_version)
+        else:
+            self._memory.save(state)
         return response
 
     @staticmethod

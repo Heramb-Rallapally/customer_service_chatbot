@@ -12,7 +12,7 @@ from src.app import (
     create_services,
 )
 from src.config import Settings
-from src.conversation import GeneratedResponse, InMemoryConversationMemory
+from src.conversation import GeneratedResponse, InMemoryConversationMemory, OracleConversationMemory
 from src.llm import OciCohereLLMService
 from src.proactive import ProactiveSupportService
 from src.retrieval import OCIEmbeddingService, OracleVSVectorStore, RetrievalService
@@ -190,6 +190,23 @@ def test_injected_connection_remains_caller_owned() -> None:
 
     services.close()
 
+    assert connection.close_calls == 0
+
+
+def test_oracle_conversation_memory_is_selected_when_configured() -> None:
+    connection = FakeConnection()
+    settings = Settings(oracle_conversation_table="CHAT_CONVERSATIONS")
+
+    services = create_application(
+        settings=settings,
+        oracle_connection=connection,
+        retrieval_service=FakeRetriever(),
+        llm_service=FakeLLM(),
+    )
+
+    assert isinstance(services.memory, OracleConversationMemory)
+    assert services.conversation_engine._memory is services.memory
+    services.close()
     assert connection.close_calls == 0
 
 

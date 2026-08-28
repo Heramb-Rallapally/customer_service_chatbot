@@ -26,7 +26,10 @@ class Settings(BaseModel):
     oracle_db_password: Optional[SecretStr] = None
     oracle_db_dsn: Optional[str] = None
     oracle_vs_table: Optional[str] = None
+    oracle_conversation_table: Optional[str] = None
     api_base_url: str = "http://127.0.0.1:8000"
+    api_auth_mode: str = "development"
+    api_development_user_id: str = "local-demo-user"
 
     @classmethod
     def from_environment(
@@ -55,7 +58,12 @@ class Settings(BaseModel):
             oracle_db_password=optional("ORACLE_DB_PASSWORD"),
             oracle_db_dsn=optional("ORACLE_DB_DSN"),
             oracle_vs_table=optional("ORACLEVS_TABLE"),
+            oracle_conversation_table=optional("ORACLE_CONVERSATION_TABLE"),
             api_base_url=values.get("API_BASE_URL") or "http://127.0.0.1:8000",
+            api_auth_mode=values.get("API_AUTH_MODE") or "development",
+            api_development_user_id=(
+                values.get("API_DEVELOPMENT_USER_ID") or "local-demo-user"
+            ),
         )
 
 

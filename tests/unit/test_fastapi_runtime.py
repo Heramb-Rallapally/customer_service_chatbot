@@ -7,8 +7,11 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from src.api import (
+    AuthenticatedIdentity,
     ChatApplicationService,
     ConversationServiceUnavailableError,
+    DevelopmentIdentityProvider,
+    RequestStateIdentityProvider,
     create_app,
     create_runtime_app,
 )
@@ -44,7 +47,15 @@ class ConversationDouble:
 
 def chat_client(response: ChatResponse | Exception) -> tuple[TestClient, ConversationDouble]:
     conversation = ConversationDouble(response)
-    return TestClient(create_app(ChatApplicationService(conversation))), conversation
+    return (
+        TestClient(
+            create_app(
+                ChatApplicationService(conversation),
+                identity_provider=DevelopmentIdentityProvider("user-1"),
+            )
+        ),
+        conversation,
+    )
 
 
 def test_health_is_process_only_and_returns_ok() -> None:
@@ -95,7 +106,12 @@ def test_chat_exposes_post_turn_resolution_status_without_changing_body() -> Non
             )
 
     conversation = StatefulConversation(ChatResponse(message="Confirm the result."))
-    client = TestClient(create_app(ChatApplicationService(conversation)))
+    client = TestClient(
+        create_app(
+            ChatApplicationService(conversation),
+            identity_provider=DevelopmentIdentityProvider("user-1"),
+        )
+    )
 
     response = client.post(
         "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
@@ -206,6 +222,14 @@ class NeutralProactiveService:
         return ProactiveAnalysis()
 
 
+class MutableIdentityProvider:
+    def __init__(self, user_id: str) -> None:
+        self.identity = AuthenticatedIdentity(user_id)
+
+    def get_identity(self, _request: object) -> AuthenticatedIdentity:
+        return self.identity
+
+
 def test_http_route_enforces_real_conversation_user_ownership() -> None:
     """Exercise ownership through FastAPI, not an API-only test double."""
 
@@ -215,10 +239,12 @@ def test_http_route_enforces_real_conversation_user_ownership() -> None:
         proactive_service=NeutralProactiveService(),
         memory=InMemoryConversationMemory(),
     )
-    client = TestClient(create_app(ChatApplicationService(engine)))
+    identities = MutableIdentityProvider("user-a")
+    client = TestClient(
+        create_app(ChatApplicationService(engine), identity_provider=identities)
+    )
     initial_turn = {
         "conversation_id": "user-a-conversation",
-        "user_id": "user-a",
         "user_message": "I need help with Oracle VPN version 5.2.",
     }
 
@@ -228,14 +254,66 @@ def test_http_route_enforces_real_conversation_user_ownership() -> None:
         json={**initial_turn, "user_message": "It is still not working."},
     ).status_code == 200
 
-    for payload in (
-        {**initial_turn, "user_id": "user-b", "user_message": "Show me the history."},
-        {
-            "conversation_id": "user-a-conversation",
-            "user_message": "Show me the history.",
-        },
-    ):
-        response = client.post("/chat", json=payload)
-        assert response.status_code == 403
-        assert response.json()["detail"] == "This conversation is not available to this user."
-        assert "another user" not in response.text
+    identities.identity = AuthenticatedIdentity("user-b")
+    response = client.post(
+        "/chat", json={**initial_turn, "user_message": "Show me the history."}
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "This conversation is not available to this user."
+    assert "another user" not in response.text
+
+    identities.identity = AuthenticatedIdentity("user-a")
+    impersonation = client.post(
+        "/chat",
+        json={**initial_turn, "user_id": "user-b", "user_message": "Show me the history."},
+    )
+    assert impersonation.status_code == 403
+    assert "does not match" not in impersonation.text
+
+
+def test_authenticated_identity_overrides_compatible_request_user_id() -> None:
+    client, conversation = chat_client(ChatResponse(message="Grounded response"))
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 200
+    assert conversation.calls[0]["user_id"] == "user-1"
+
+
+def test_required_authentication_rejects_requests_without_trusted_identity() -> None:
+    client = TestClient(
+        create_app(
+            ChatApplicationService(ConversationDouble(ChatResponse(message="unused"))),
+            identity_provider=RequestStateIdentityProvider(),
+        )
+    )
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Authentication is required."
+    assert "identity" not in response.text.lower()
+
+
+def test_request_state_identity_provider_uses_server_populated_identity() -> None:
+    conversation = ConversationDouble(ChatResponse(message="Grounded response"))
+    app = create_app(
+        ChatApplicationService(conversation),
+        identity_provider=RequestStateIdentityProvider(),
+    )
+
+    @app.middleware("http")
+    async def trusted_identity_middleware(request, call_next):
+        request.state.authenticated_identity = AuthenticatedIdentity("production-user")
+        return await call_next(request)
+
+    response = TestClient(app).post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 200
+    assert conversation.calls[0]["user_id"] == "production-user"

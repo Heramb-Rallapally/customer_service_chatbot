@@ -82,8 +82,27 @@ The UI communicates only through FastAPI using `HttpChatApiClient`. Set
 requires configured OCI Generative AI and Oracle AI Database access; those
 services are not exercised by the credential-free test suite.
 
-`user_id` is currently supplied by the client. It provides conversation
-ownership consistency within the Conversation Engine, but it is **not**
-authentication. A production deployment must derive identity from a trusted
-authentication or session mechanism; authentication is deferred to the later
-security/deployment step.
+## API identity and conversation ownership
+
+`POST /chat` now derives its effective `user_id` from an injected
+`AuthenticatedIdentity`, not from `ChatRequest.user_id`. The request field is
+retained for compatibility only: if supplied, it must match the authenticated
+identity or the API returns a safe 403 response. It cannot impersonate another
+user.
+
+For local demos, `API_AUTH_MODE=development` uses the server-side
+`API_DEVELOPMENT_USER_ID` value (default: `local-demo-user`). The UI/client may
+omit `user_id`; it is not authentication and does not establish identity.
+
+For production, set `API_AUTH_MODE=required` and inject authentication
+middleware that verifies the deployment's trusted session/token mechanism and
+sets `request.state.authenticated_identity` to `AuthenticatedIdentity`. Without
+that middleware the API returns 401. Conversation ownership then ensures the
+authenticated user cannot continue another user's conversation.
+
+## Conversation memory
+
+`InMemoryConversationMemory` is process-local and intended only for tests and
+local development. Configure `ORACLE_CONVERSATION_TABLE` after provisioning the
+documented Oracle schema to select durable, optimistic-concurrency memory in
+the application composition root. See [conversation memory documentation](docs/conversation-memory.md).

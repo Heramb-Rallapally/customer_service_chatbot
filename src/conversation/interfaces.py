@@ -78,3 +78,22 @@ class ConversationMemory(Protocol):
     def get_summary(self, conversation_id: str) -> Optional[str]:
         """Return an optional bounded summary of older conversation context."""
 
+
+@dataclass(frozen=True)
+class ConversationSnapshot:
+    """A loaded state paired with its persistence version."""
+
+    state: ConversationState
+    version: int
+
+
+class VersionedConversationMemory(ConversationMemory, Protocol):
+    """Optional optimistic-concurrency capability for durable memory adapters."""
+
+    def load_with_version(
+        self, conversation_id: str
+    ) -> Optional[ConversationSnapshot]:
+        """Load state and the version required for a conflict-safe save."""
+
+    def save_with_version(self, state: ConversationState, *, expected_version: int) -> int:
+        """Save state only when its stored version matches ``expected_version``."""
