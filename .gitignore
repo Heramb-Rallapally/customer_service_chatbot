@@ -8,3 +8,5 @@ __pycache__/
 htmlcov/
 .DS_Store
 
+# Local implementation review; intentionally retained for engineering handoff, not versioned product documentation.
+review.md
