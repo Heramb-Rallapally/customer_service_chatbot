@@ -12,7 +12,12 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.config import Settings, get_settings
-from src.conversation import ConversationEngine, ConversationMemory, InMemoryConversationMemory
+from src.conversation import (
+    ConversationEngine,
+    ConversationMemory,
+    InMemoryConversationMemory,
+    OracleConversationMemory,
+)
 from src.conversation.interfaces import LLMService, ProactiveService, Retriever
 from src.ingestion import DocumentIndexer, KnowledgeIndexer
 from src.llm import OciCohereLLMService
@@ -38,9 +43,9 @@ class ApplicationInitializationError(RuntimeError):
 class ApplicationServices:
     """Runtime service graph and its owned resource lifecycle.
 
-    The default memory is deliberately process-local and suitable only for
-    local development or a single application process.  A future persistent
-    implementation can be injected through ``create_application``.
+    ``ORACLE_CONVERSATION_TABLE`` selects durable Oracle-backed memory.
+    Without it, memory is deliberately process-local and suitable only for
+    local development or a single application process.
     """
 
     settings: Settings
@@ -100,17 +105,24 @@ def create_application(
     """
 
     configured_settings = settings or get_settings()
+    use_durable_memory = (
+        memory is None and configured_settings.oracle_conversation_table is not None
+    )
     _validate_configuration(
         configured_settings,
         needs_retrieval=retrieval_service is None,
         needs_oraclevs_backend=retrieval_service is None and oracle_backend is None,
         needs_oracle_connection=(
-            retrieval_service is None
-            and oracle_backend is None
-            and oracle_connection is None
+            (
+                retrieval_service is None
+                and oracle_backend is None
+                and oracle_connection is None
+            )
+            or (use_durable_memory and oracle_connection is None)
         ),
         needs_embeddings=retrieval_service is None and embeddings is None,
         needs_llm=llm_service is None,
+        needs_durable_memory=use_durable_memory,
     )
 
     owns_connection = False
@@ -118,6 +130,9 @@ def create_application(
     resolved_embeddings = embeddings
     resolved_store: Optional[OracleVSVectorStore] = None
     try:
+        if connection is None and use_durable_memory:
+            connection = _create_oracle_connection(configured_settings)
+            owns_connection = True
         if retrieval_service is None:
             if resolved_embeddings is None:
                 resolved_embeddings = OCIEmbeddingService.from_settings(configured_settings)
@@ -138,7 +153,14 @@ def create_application(
 
         resolved_llm = llm_service or OciCohereLLMService.from_settings(configured_settings)
         resolved_proactive = proactive_service or ProactiveSupportService()
-        resolved_memory = memory or InMemoryConversationMemory()
+        resolved_memory = memory or (
+            OracleConversationMemory(
+                connection,
+                table_name=configured_settings.oracle_conversation_table,
+            )
+            if use_durable_memory
+            else InMemoryConversationMemory()
+        )
         if not isinstance(resolved_retrieval, DocumentIndexer):
             raise ApplicationInitializationError(
                 "Configured retrieval service does not support document indexing"
@@ -178,9 +200,12 @@ def _validate_configuration(
     needs_oracle_connection: bool,
     needs_embeddings: bool,
     needs_llm: bool,
+    needs_durable_memory: bool,
 ) -> None:
     if needs_retrieval and needs_oraclevs_backend:
         _require_settings(settings, "oracle_vs_table")
+    if needs_durable_memory:
+        _require_settings(settings, "oracle_conversation_table")
     if needs_oracle_connection:
         _require_settings(
             settings,
@@ -200,6 +225,12 @@ def _validate_configuration(
         raise ApplicationConfigurationError(
             "ORACLEVS_TABLE must be a single valid Oracle identifier"
         )
+    if needs_durable_memory and not re.fullmatch(
+        r"[A-Za-z][A-Za-z0-9_$#]{0,127}", settings.oracle_conversation_table or ""
+    ):
+        raise ApplicationConfigurationError(
+            "ORACLE_CONVERSATION_TABLE must be a single valid Oracle identifier"
+        )
     if needs_llm:
         _require_settings(settings, "oci_compartment_id", "llm_model")
 
@@ -212,6 +243,7 @@ def _require_settings(settings: Settings, *attributes: str) -> None:
             "ORACLE_DB_PASSWORD": "ORACLE_DB_PASSWORD",
             "ORACLE_DB_DSN": "ORACLE_DB_DSN",
             "ORACLE_VS_TABLE": "ORACLEVS_TABLE",
+            "ORACLE_CONVERSATION_TABLE": "ORACLE_CONVERSATION_TABLE",
             "OCI_COMPARTMENT_ID": "OCI_COMPARTMENT_ID",
             "EMBEDDING_MODEL": "EMBEDDING_MODEL",
             "LLM_MODEL": "LLM_MODEL",
