@@ -131,3 +131,24 @@ The application composition root wires retrieval-backed proactive
 recommendations, evidence-based unsupported-issue detection, and
 user-isolated conversation history. See [proactive provider documentation](docs/proactive-providers.md)
 for dependency, graceful-degradation, and OCI sentiment-injection details.
+
+## End-to-end evaluation
+
+Step 8 provides a labelled JSON dataset contract, a dependency-injected runner,
+deterministic outcome/retrieval metrics, human-readable reporting, and a JSON
+CLI output:
+
+```bash
+python -m src.evaluation.run \
+  --dataset examples/evaluation/cases.json \
+  --output examples/evaluation/results.json
+```
+
+The CLI exercises the configured composition root and therefore requires live
+OCI/Oracle configuration. Credential-free integration tests use deterministic
+providers through the same public contracts and real `ConversationEngine` and
+`ChatApplicationService` path. Evaluation never performs a second retrieval
+for telemetry, stores no raw chat or generated response in reports, and does
+not retrain models, modify prompts, or change production behavior. See
+[evaluation documentation](docs/evaluation.md) for the dataset, metrics,
+local-injection example, and live-infrastructure requirements.

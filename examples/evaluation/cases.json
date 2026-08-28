@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "cases": [
+    {
+      "case_id": "vpn-authentication-guidance",
+      "issue_type": "authentication",
+      "category": "authentication_login",
+      "difficulty": "medium",
+      "user_message": "My Oracle VPN version 5.2 reports authentication failed.",
+      "expected_resolution_status": "AWAITING_CONFIRMATION",
+      "expected_escalation": false,
+      "expected_keywords": ["token"],
+      "expected_source_ids": ["vpn-auth-guide"]
+    },
+    {
+      "case_id": "vpn-resolution-confirmed",
+      "issue_type": "authentication",
+      "category": "resolution_confirmation",
+      "difficulty": "medium",
+      "user_message": "My Oracle VPN version 5.2 reports authentication failed.",
+      "follow_up_messages": ["Yes, it works now."],
+      "expected_resolution_status": "RESOLVED",
+      "expected_escalation": false
+    },
+    {
+      "case_id": "explicit-human-request",
+      "category": "escalation_request",
+      "difficulty": "easy",
+      "user_message": "Please connect me to a human support agent.",
+      "expected_resolution_status": "ESCALATED",
+      "expected_escalation": true,
+      "expected_keywords": ["human"]
+    },
+    {
+      "case_id": "unsupported-product",
+      "category": "unsupported_request",
+      "difficulty": "hard",
+      "user_message": "I use Example Router version 1.0 and cannot connect.",
+      "expected_resolution_status": "ESCALATED",
+      "expected_escalation": true
+    }
+  ]
+}
