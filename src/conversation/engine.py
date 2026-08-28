@@ -25,6 +25,7 @@ from .context import (
     RetrievalQueryBuilder,
     reset_for_new_request,
 )
+from .exceptions import ConversationOwnershipError
 from .intent import ConversationIntent, IntentDetector
 from .interfaces import (
     ConversationMemory,
@@ -120,7 +121,9 @@ class ConversationEngine:
             state = ConversationState(conversation_id=conversation_id, user_id=user_id)
         elif state.user_id is not None:
             if user_id != state.user_id:
-                raise ValueError("conversation_id is already associated with another user")
+                raise ConversationOwnershipError(
+                    "conversation_id is already associated with another user"
+                )
         elif user_id:
             state.user_id = user_id
 

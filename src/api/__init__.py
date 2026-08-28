@@ -1,6 +1,6 @@
 """HTTP boundary for the customer-support application."""
 
-from .app import create_app
+from .app import create_app, create_runtime_app
 from .schemas import ChatRequest
 from .service import (
     ChatApplicationService,
@@ -14,4 +14,5 @@ __all__ = [
     "ConversationService",
     "ConversationServiceUnavailableError",
     "create_app",
+    "create_runtime_app",
 ]

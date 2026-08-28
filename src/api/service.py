@@ -40,3 +40,17 @@ class ChatApplicationService:
             user_message=request.user_message,
             user_id=request.user_id,
         )
+
+    def resolution_status(self, conversation_id: str) -> Optional[str]:
+        """Return state created by the just-authorized chat turn, when available."""
+
+        get_state = getattr(self._conversation_service, "get_state", None)
+        if not callable(get_state):
+            return None
+        try:
+            state = get_state(conversation_id)
+        except Exception:
+            return None
+        status = getattr(state, "resolution_status", None)
+        value = getattr(status, "value", status)
+        return value if isinstance(value, str) and value else None

@@ -1,0 +1,241 @@
+"""Credential-free FastAPI boundary tests."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+from fastapi.testclient import TestClient
+
+from src.api import (
+    ChatApplicationService,
+    ConversationServiceUnavailableError,
+    create_app,
+    create_runtime_app,
+)
+from src.app import ApplicationConfigurationError, ApplicationInitializationError
+from src.conversation import (
+    ConversationEngine,
+    ConversationOwnershipError,
+    GeneratedResponse,
+    InMemoryConversationMemory,
+)
+from src.models import ChatResponse, Citation, ConversationState, ProactiveAnalysis, ResolutionStatus
+
+
+class ConversationDouble:
+    def __init__(self, response: ChatResponse | Exception) -> None:
+        self.response = response
+        self.calls: list[dict[str, str | None]] = []
+
+    def handle_message(
+        self, *, conversation_id: str, user_message: str, user_id: str | None = None
+    ) -> ChatResponse:
+        self.calls.append(
+            {
+                "conversation_id": conversation_id,
+                "user_message": user_message,
+                "user_id": user_id,
+            }
+        )
+        if isinstance(self.response, Exception):
+            raise self.response
+        return self.response
+
+
+def chat_client(response: ChatResponse | Exception) -> tuple[TestClient, ConversationDouble]:
+    conversation = ConversationDouble(response)
+    return TestClient(create_app(ChatApplicationService(conversation))), conversation
+
+
+def test_health_is_process_only_and_returns_ok() -> None:
+    client, _ = chat_client(ChatResponse(message="unused"))
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_chat_uses_existing_request_and_response_contracts() -> None:
+    expected = ChatResponse(
+        message="Use the documented reset.",
+        citations=[Citation(source="VPN guide", document_id="vpn-guide")],
+        suggested_actions=["Reset the token"],
+        escalation_required=False,
+        confidence=0.8,
+    )
+    client, conversation = chat_client(expected)
+
+    response = client.post(
+        "/chat",
+        json={
+            "conversation_id": "conversation-1",
+            "user_id": "user-1",
+            "user_message": "VPN login fails",
+        },
+    )
+
+    assert response.status_code == 200
+    assert ChatResponse.model_validate(response.json()) == expected
+    assert conversation.calls == [
+        {
+            "conversation_id": "conversation-1",
+            "user_id": "user-1",
+            "user_message": "VPN login fails",
+        }
+    ]
+
+
+def test_chat_exposes_post_turn_resolution_status_without_changing_body() -> None:
+    class StatefulConversation(ConversationDouble):
+        def get_state(self, conversation_id: str) -> ConversationState:
+            return ConversationState(
+                conversation_id=conversation_id,
+                resolution_status=ResolutionStatus.AWAITING_CONFIRMATION,
+            )
+
+    conversation = StatefulConversation(ChatResponse(message="Confirm the result."))
+    client = TestClient(create_app(ChatApplicationService(conversation)))
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.headers["X-Resolution-Status"] == "AWAITING_CONFIRMATION"
+    assert ChatResponse.model_validate(response.json()).message == "Confirm the result."
+
+
+def test_invalid_request_is_rejected_by_pydantic() -> None:
+    client, _ = chat_client(ChatResponse(message="unused"))
+
+    response = client.post("/chat", json={"conversation_id": " ", "user_message": " "})
+
+    assert response.status_code == 422
+
+
+def test_conversation_validation_error_becomes_safe_4xx() -> None:
+    client, _ = chat_client(ConversationOwnershipError("ownership details"))
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "This conversation is not available to this user."
+    assert "ownership details" not in response.text
+
+
+def test_downstream_failures_are_safe() -> None:
+    client, _ = chat_client(RuntimeError("OCI endpoint with internal detail"))
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Unable to process the support request right now."
+    assert "OCI endpoint" not in response.text
+
+
+def test_known_service_unavailability_becomes_safe_503() -> None:
+    client, _ = chat_client(ConversationServiceUnavailableError("internal service detail"))
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "The support service is temporarily unavailable. Please try again."
+
+
+def test_lazy_application_configuration_and_initialization_failures_are_safe_503() -> None:
+    for failure in (
+        ApplicationConfigurationError("Missing required configuration: ORACLE_DB_DSN"),
+        ApplicationInitializationError("Oracle connection failure details"),
+    ):
+        def application_factory(failure=failure):
+            raise failure
+
+        client = TestClient(create_runtime_app(application_factory=application_factory))
+        response = client.post(
+            "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+        )
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == (
+            "The support service is temporarily unavailable. Please try again."
+        )
+        assert "ORACLE_DB_DSN" not in response.text
+        assert "connection failure" not in response.text
+
+
+def test_runtime_app_defers_composition_until_chat() -> None:
+    calls = 0
+
+    def application_factory():
+        nonlocal calls
+        calls += 1
+        return SimpleNamespace(
+            conversation_engine=ConversationDouble(ChatResponse(message="Grounded response")),
+            close=lambda: None,
+        )
+
+    with TestClient(create_runtime_app(application_factory=application_factory)) as client:
+        assert client.get("/health").status_code == 200
+        assert calls == 0
+        response = client.post(
+            "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+        )
+        assert response.status_code == 200
+        assert response.json()["message"] == "Grounded response"
+        assert calls == 1
+
+
+class EmptyRetriever:
+    def search(self, *, query: str, filters: dict[str, str], top_k: int) -> list[object]:
+        return []
+
+
+class UnusedLLM:
+    def generate(self, context: object) -> GeneratedResponse:
+        return GeneratedResponse(message="Unused")
+
+
+class NeutralProactiveService:
+    def analyze(self, *, message: str, conversation: ConversationState) -> ProactiveAnalysis:
+        return ProactiveAnalysis()
+
+
+def test_http_route_enforces_real_conversation_user_ownership() -> None:
+    """Exercise ownership through FastAPI, not an API-only test double."""
+
+    engine = ConversationEngine(
+        retriever=EmptyRetriever(),
+        llm_service=UnusedLLM(),
+        proactive_service=NeutralProactiveService(),
+        memory=InMemoryConversationMemory(),
+    )
+    client = TestClient(create_app(ChatApplicationService(engine)))
+    initial_turn = {
+        "conversation_id": "user-a-conversation",
+        "user_id": "user-a",
+        "user_message": "I need help with Oracle VPN version 5.2.",
+    }
+
+    assert client.post("/chat", json=initial_turn).status_code == 200
+    assert client.post(
+        "/chat",
+        json={**initial_turn, "user_message": "It is still not working."},
+    ).status_code == 200
+
+    for payload in (
+        {**initial_turn, "user_id": "user-b", "user_message": "Show me the history."},
+        {
+            "conversation_id": "user-a-conversation",
+            "user_message": "Show me the history.",
+        },
+    ):
+        response = client.post("/chat", json=payload)
+        assert response.status_code == 403
+        assert response.json()["detail"] == "This conversation is not available to this user."
+        assert "another user" not in response.text

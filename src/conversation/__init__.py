@@ -1,6 +1,7 @@
 """Public Conversation Engine exports."""
 
 from .engine import ConversationEngine, ConversationEngineOptions
+from .exceptions import ConversationOwnershipError
 from .intent import ConversationIntent, IntentDetector
 from .interfaces import (
     ConversationMemory,
@@ -17,6 +18,7 @@ __all__ = [
     "ConversationEngineOptions",
     "ConversationIntent",
     "ConversationMemory",
+    "ConversationOwnershipError",
     "GeneratedResponse",
     "GenerationContext",
     "InMemoryConversationMemory",

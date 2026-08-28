@@ -56,3 +56,34 @@ metric, filter, and live-integration-test assumptions.
 - `data/`: raw, processed, and sample data locations.
 
 See `AGENTS.md` for the authoritative architecture, integration, security, and team workflow rules.
+
+## Run the API and UI
+
+Install dependencies, configure the OCI/Oracle values in your environment, then
+start the API from the repository root:
+
+```bash
+uvicorn src.api.app:app --reload
+```
+
+The API exposes `GET /health` for process health and `POST /chat` using the
+existing `ChatRequest` and `ChatResponse` models. OCI/Oracle clients are
+created lazily on the first chat request through `src.app.create_application()`;
+importing the API or calling `/health` does not require infrastructure.
+
+Start Streamlit in a second terminal:
+
+```bash
+streamlit run src/ui/app.py
+```
+
+The UI communicates only through FastAPI using `HttpChatApiClient`. Set
+`API_BASE_URL` when the API is not at `http://127.0.0.1:8000`. Real chat
+requires configured OCI Generative AI and Oracle AI Database access; those
+services are not exercised by the credential-free test suite.
+
+`user_id` is currently supplied by the client. It provides conversation
+ownership consistency within the Conversation Engine, but it is **not**
+authentication. A production deployment must derive identity from a trusted
+authentication or session mechanism; authentication is deferred to the later
+security/deployment step.
