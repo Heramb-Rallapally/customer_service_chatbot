@@ -25,6 +25,7 @@ class Settings(BaseModel):
     oracle_db_user: Optional[str] = None
     oracle_db_password: Optional[SecretStr] = None
     oracle_db_dsn: Optional[str] = None
+    oracle_vs_table: Optional[str] = None
 
     @classmethod
     def from_environment(
@@ -52,6 +53,7 @@ class Settings(BaseModel):
             oracle_db_user=optional("ORACLE_DB_USER"),
             oracle_db_password=optional("ORACLE_DB_PASSWORD"),
             oracle_db_dsn=optional("ORACLE_DB_DSN"),
+            oracle_vs_table=optional("ORACLEVS_TABLE"),
         )
 
 
