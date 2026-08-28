@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+
+<html class="" lang="en-US">
+<head><meta content="2026-08-12 22:53:08Z" name="cpp-last-modified-time"/><meta content="2026-08-12 22:53:08Z" name="cpp-last-processed-time"/>
+<meta charset="utf-8"/>
+<meta content="(C) Copyright 2026" name="copyright"/>
+<meta content="DITA-OT" name="generator"/>
+<meta content="Oracle AI Database@AWS
+        " name="title"/>
+<meta content="Oracle AI Database@AWS is a cloud database service that lets you to access OCI managed Oracle Exadata infrastructure inside AWS data centers." name="description"/>
+<meta content="WM178512" name="productservices_id"/>
+<meta content="en" name="language"/>
+<meta content="WM178623" name="contenttype_id"/>
+<meta content="https://docs.oracle.com/iaas/Content/database-at-aws/oaaws.htm" name="url"/>
+<title>Oracle AI Database@AWS</title>
+<meta content="width=device-width" name="viewport"/>
+<meta charset="utf-8"/>
+<link href="/iaas/build/styles.css?f0f229f13e16d525a0f747b7ec3d24604047150846cdd63f76988cec11a37bd2" rel="stylesheet"/>
+<script>window.ohcglobal || document.write('<script src="/en/dcommon/js/global.js">\x3C/script>')</script></head>
+<body>
+<div id="highline-mount"></div>
+<div data-trackas="dcoc-main-navigation" id="mobile-toc" uk-offcanvas="flip: true; overlay: true">
+<div class="uk-offcanvas-bar uk-padding-remove-left uk-padding-remove-right">
+<button class="uk-offcanvas-close toc-mobile-close" type="button" uk-close=""></button>
+<div class="uk-margin-top vl-table-of-contents-mount">
+<div class="uk-text-center">
+<div uk-spinner=""></div>
+</div>
+</div>
+</div>
+</div>
+<div data-trackas="dcoc-header" i18n="" id="global-nav-mount">
+<div class="vl-nav-mount-height-placeholder"></div>
+</div>
+<div class="uk-section uk-section-secondary vl-background-hero uk-background-cover vl-dcoc-hero" data-trackas="dcoc-content-body" style="background-image: url('/iaas/img/banner-bg.jpg')">
+<div class="uk-container uk-container-large">
+<div uk-grid="">
+<div class="uk-width-expand">
+<h3 class="uk-link-reset uk-text-bold uk-margin-remove-bottom" id="cxe-docs-home-page">
+<a href="/iaas/Content/home.htm">
+                  Oracle Cloud Infrastructure Documentation
+                </a>
+</h3>
+<hr class="vl-hr-accent uk-margin-small-top"/>
+</div>
+</div>
+</div>
+</div>
+<div uk-height-viewport="offset-top: true; offset-bottom: true">
+<div class="vl-dcoc-hero-margin">
+<div class="uk-container vl-padding-small-vertical uk-background-muted uk-hidden@m">
+<div class="uk-grid uk-grid-small uk-text-small" uk-grid="">
+<div class="uk-width-expand" data-trackas="dcoc-main-navigation" id="vl-breadcrumbs-mount"></div>
+<div class="uk-width-auto">
+<button class="uk-button uk-button-link uk-button-small vl-button-icon" type="button" uk-toggle="target: #mobile-toc">
+<span uk-icon="icon: menu; ratio: .8"></span>
+                  All Pages
+                </button>
+</div>
+</div>
+</div>
+</div>
+<div class="uk-container uk-container-large">
+<div class="uk-height-1-1 uk-grid" uk-grid="">
+<div class="vl-sidebar-left uk-visible@m" vl-table-of-contents-left="">
+<div class="vl-table-of-contents-mount vl-table-of-contents-inner" vl-table-of-contents-left-inner="">
+<div class="uk-text-center uk-margin-top">
+<div uk-spinner=""></div>
+</div>
+</div>
+</div>
+<div class="uk-width-expand" data-trackas="dcoc-content-body">
+<div class="uk-grid" uk-grid="">
+<div class="uk-width-expand" uk-height-viewport="offset-top: true">
+<a href="#dcoc-content-body" id="skiplink" tabindex="1">Skip to main content</a>
+<div class="uk-margin-large-bottom" id="dcoc-content-body">
+<div class="vl-content vl-content-max-width">
+<div class="uk-hidden@l">
+<div class="uk-nav uk-active uk-nav-default dts-header" id="vl-dts-mount-header"></div>
+</div>
+<article aria-labelledby="ariaid-title1" role="article">
+<article aria-labelledby="ariaid-title1" class="topic nested0" id="top">
+<h1 class="title topictitle1" id="ariaid-title1">Oracle AI Database@AWS
+</h1>
+<div class="body"><p class="shortdesc">
+Oracle AI Database@AWS is a cloud database service that lets you to access OCI managed Oracle Exadata infrastructure inside AWS data centers.</p>
+<p> The service lets you to migrate on-premises Oracle workloads to AWS, giving your business-critical applications low-latency connectivity to your Oracle databases. With Oracle AI Database@AWS, you also have access to Oracle Real Application Clusters (RAC) and Oracle Exadata performance for mission-critical applications in AWS. The service integrates with other AWS services, and you get a single invoice through AWS Marketplace that includes Oracle AI Database@AWS billing. Oracle AI Database@AWS usage counts toward AWS commitments.</p>
+<p>The following high-level architecture diagram shows how an OCI region (parent site) is connected with an AWS region's Availability Zone (child site) through an OCI managed network as part of Oracle AI Database@AWS. An application server deployed on Amazon EC2 connects to the Oracle databases deployed in an Oracle Database (ODB) network through ODB peering. The control plane, which is highly available and fault-tolerant, is deployed in the OCI Region and offers a seamless database management and administration experience.</p>
+<div uk-lightbox=""><a href="images/odbaws-region-architecture-diagram.png"><img alt="A diagram of the relationship between an OCI parent region and an AWS region offering Oracle AI Database@AWS." class="diagram" src="images/odbaws-region-architecture-diagram.png" tabindex="" title="Click to expand" width="600"/></a></div>
+</div>
+<article aria-labelledby="ariaid-title2" class="topic nested1" id="benefits">
+<h2 class="title topictitle2 vl-include-in-page-toc" id="ariaid-title2">Benefits of Using Oracle AI Database@AWS
+</h2>
+<div class="body">
+<p>Oracle AI Database@AWS offers a powerful and flexible solution for running Oracle workloads directly within AWS. Key benefits include:</p>
+<ul>
+<li><a class="xref" href="#simplified-migration">Simplified Migration</a></li>
+<li><a class="xref" href="#low-latency-connectivity">Low-Latency Connectivity</a></li>
+<li><a class="xref" href="#unified-management-ops">Unified Management and Operations</a></li>
+<li><a class="xref" href="#seamless-integration">Seamless Integration</a></li>
+</ul>
+</div>
+<article aria-labelledby="ariaid-title3" class="topic nested2" id="simplified-migration">
+<h3 class="title topictitle3" id="ariaid-title3">Simplified Migration</h3>
+<div class="body">
+<p>Oracle AI Database@AWS lets you seamlessly migrate your Oracle workloads to either Oracle Exadata Database Service on Dedicated Infrastructure or Oracle Autonomous AI Database on Dedicated Exadata Infrastructure, deployed within AWS. These migrations require minimal database changes, retain full Oracle feature sets, maintain architectural compatibility, and deliver performance equal to on-premises environments. Supported migration tools include RMAN, Oracle Data Guard, transportable tablespaces, Oracle Data Pump, Oracle GoldenGate, and Oracle Zero Downtime Migration (ZDM).</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title4" class="topic nested2" id="low-latency-connectivity">
+<h3 class="title topictitle3" id="ariaid-title4">Low-Latency Connectivity</h3>
+<div class="body">
+<p>Hosting Oracle Database close to your AWS applications reduces network latency, which ensures faster response times and improved application performance. This proximity minimizes data transfer delays and optimizes system efficiency.</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title5" class="topic nested2" id="unified-management-ops">
+<h3 class="title topictitle3" id="ariaid-title5">Unified Management and Operations</h3>
+<div class="body">
+<p>Oracle AI Database@AWS offers a cohesive operational experience with integrated purchasing, support, and lifecycle management across Oracle and AWS. It supports your existing AWS commitments and Oracle license entitlements. You can manage Oracle resources using AWS's APIs, CLI, and SDKs, which internally invoke the necessary OCI APIs for provisioning and management.</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title6" class="topic nested2" id="seamless-integration">
+<h3 class="title topictitle3" id="ariaid-title6">Seamless Integration</h3>
+<div class="body">
+<p>Oracle AI Database@AWS seamlessly integrates with core AWS services like Amazon EC2, VPC, and IAM, enabling cohesive security and infrastructure management. It also supports AWS-native tools such as Amazon CloudWatch for monitoring, Amazon EventBridge for automation, and Amazon S3 for highly durable backups.</p>
+</div>
+</article>
+</article>
+<article aria-labelledby="ariaid-title7" class="topic nested1" id="oaaws_overview_service_offerings">
+<h2 class="title topictitle2 vl-include-in-page-toc" id="ariaid-title7">Available Database Services</h2>
+<div class="body">
+<p>
+Oracle AI Database@AWS offers the following Oracle database services:</p>
+<div class="uk-overflow-auto"><table class="table vl-table-bordered vl-table-divider-col" summary="Offered Oracle database services."><caption></caption><colgroup><col style="width:25%"/><col style="width:25%"/><col style="width:25%"/><col style="width:25%"/></colgroup><thead class="thead">
+<tr class="row">
+<th class="entry" id="oaaws_overview_service_offerings__entry__1">Service name</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__2">Available versions</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__3">Private Offer eligible?</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__4">Public Offer eligible?</th>
+</tr>
+</thead><tbody class="tbody">
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__1"><a class="xref" href="https://docs.oracle.com/en/engineered-systems/exadata-cloud-service/ecscm/exadata-cloud-infrastructure-overview.html">Oracle Exadata Database Service on Dedicated Infrastructure</a></td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__2">19c, 26ai</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__3">Yes</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__4">No</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__1"><a class="xref" href="https://docs.oracle.com/en/engineered-systems/exadata-database-exascale/exdxs/overview-exadb-xs-service.html">Oracle Exadata Database Service on Exascale Infrastructure</a></td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__2">19c, 26ai</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__3">Yes</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__4">Yes</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__1"><a class="xref" href="https://docs.oracle.com/en/cloud/paas/autonomous-database/dedicated/adbaa/index.html">Oracle Autonomous AI Database on Dedicated Exadata Infrastructure </a></td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__2">19c, 26ai</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__3">Yes</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__4">No</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__1"><u><a class="xref" href="https://docs.oracle.com/en/cloud/paas/recovery-service/dbrsu/overview-recovery-service.html">Oracle Database Autonomous Recovery Service</a></u></td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__2">NA</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__3">Yes</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__4">No</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__1"><a class="xref" href="https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-intro-adb.html">Oracle Autonomous AI Database Serverless</a></td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__2">19c, 26ai</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__3">Yes</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__4">Yes</td>
+</tr>
+</tbody></table></div>
+<p>Oracle Exadata Database Service on Dedicated Infrastructure, Oracle Exadata Database Service on Exascale Infrastructure, and Oracle Autonomous AI Database use the same underlying high-performance hardware optimized for database workloads, but they each offer distinct advantages to meet different customer needs.</p>
+<div class="uk-overflow-auto"><table class="table vl-table-bordered vl-table-divider-col" summary="This table summarizes the feature of Oracle AI Database@AWS."><caption></caption><colgroup><col style="width:20%"/><col style="width:20%"/><col style="width:20%"/><col style="width:20%"/><col style="width:20%"/></colgroup><thead class="thead">
+<tr class="row">
+<th class="entry" id="oaaws_overview_service_offerings__entry__25">Characteristic</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__26">Oracle Exadata Database Service</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__27">Oracle Autonomous AI Database on Dedicated Exadata Infrastructure 
+</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__28">Oracle Exadata Database Service on Exascale Infrastructure</th>
+<th class="entry" id="oaaws_overview_service_offerings__entry__29">Oracle Autonomous AI Database</th>
+</tr>
+</thead><tbody class="tbody">
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Usage</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">Fully managed dedicated infrastructure for running Oracle databases. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring of the database belongs to the customer.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">Fully managed database service (Infrastructure, OS, Database) for running Oracle databases. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring is delegated to Oracle.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Fully managed database service (Infrastructure, OS, Database) for running Oracle AI Database. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring is delegated to Oracle.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Fully managed, elastic, and scalable database service. Designed for variable workloads, cloud native applications, and flexible usage, automatically scaling resources up and down as needed. Minimal admin effort needed.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Performance</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Provides high performance with automatic scaling. Delivers low latency and high throughput, leveraging the elasticity of the cloud.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Management</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">Requires manual management and administration, including database configuration, tuning, and maintenance.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">Fully managed with optional self-tuning features and automated admin tasks such as provisioning, scaling, patching, cloning and backups.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Fully managed with optional self-tuning features and automated admin tasks such as provisioning, scaling, patching, cloning and backups.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Self-driving and self-managing, automating tasks such as provisioning, scaling, tuning, patching, and backups.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Operations</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Cloud automation provides the creation, maintenance updates, and basic monitoring for databases. Database administrators need to tune the database, apply maintenance updates, and configure additional database monitoring. Strong Oracle support problem resolution model.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Reduced operational overhead, as Oracle manages administrative tasks. Customers only need to focus on application development and data management. Moves to a DevOps problem resolution model.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Reduced operational overhead, as Oracle manages administrative tasks. Customers only need to focus on application development and data management. Moves to a DevOps problem resolution model.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Reduces operational overhead, as Oracle manages most administrative tasks. Customers only need to focus on application development and data management.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Cost</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs allocated to VM Cluster resources. Provides predictable pricing.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs actively running Autonomous AI Databases. Provides lowest total-cost-of-ownership.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs actively running autonomous databases. Provides lowest total-cost-of-ownership.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Uses a pay-as-you-go model, charging based on actual resource consumption. Costs scale up and down with usage, providing flexibility and potential cost savings.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Scaling</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Provides elastic scaling for infrastructure so you can vertically and horizontally scale when you need more resources for your workloads.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Provides the same elastic scaling for infrastructure resources, but also provides auto-scaling at the database level, no need to scale at infrastructure to optimize cost.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Provides the same elastic scaling for infrastructure resources, but also provides auto-scaling at the database level, no need to scale at infrastructure to optimize cost.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Offers automatic and elastic scaling. Can scale up and down based on workload demands without manual intervention, providing true serverless scalability.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Security</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Robust security features including encryption, security patches, and operator access controls for infrastructure. Customers are responsible for security configuration and management.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Mandatory security configuration by default. Database runs in Database Vault realms, customers can bring encryption keys and certificates. Operator access control for infrastructure and virtualization resources.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Mandatory security configuration by default. Database runs in Database Vault realms, customers can bring encryption keys and certificates. Operator access control for infrastructure and virtualization resources.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Built-in security with automatic data encryption, user authentication, and threat detection. Oracle manages security updates and patches.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Configuration</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning and specialized best practice defaults for OLTP / Data Warehouse workload.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning and specialized best practice defaults for OLTP and Data Warehouse workload.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Pre-configured and instantly provisioned, requiring minimal setup and configuration.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Patching</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Infrastructure security and maintenance updates applied automatically on configured schedule. You receive Database, Grid Infrastructure, and Guest OS patches, which you apply based on your schedule.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">Policy defined, hands free patching for entire service stack: Infrastructure, OS, Grid and database. Automation for one-off patches and ability to set custom governance workflows to control software change from Dev to Prod.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Policy-defined, hands-free patching for entire service stack: Infrastructure, OS, Grid and database. Automation for one-off patches and ability to set custom governance workflows to control software change from Dev to Prod.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Automatic patching with no downtime, managed by Oracle.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Isolation</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">Complete isolation as customers has their own dedicated infrastructure.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">Complete isolation as customers has their own dedicated infrastructure.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Complete isolation as customers has their own dedicated infrastructure.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Data isolation through dedicated database instances, ensuring customer data separation.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Flexibility</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Offers flexibility in customization within the VM for existing app scripts and dependent libraries, so easiest lift and shift to cloud.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Fully managed and monitored by Oracle, so no in VM changes. Provides most flexibility in usage and scaling, adapting to dynamic workload demands.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Fully managed and monitored by Oracle, so no in VM changes. Provides most flexibility in usage and scaling, adapting to dynamic workload demands.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Fully managed and monitored by Oracle. Provides flexibility in usage and scaling, adapting to dynamic workload demands.</td>
+</tr>
+<tr class="row">
+<td class="entry" headers="oaaws_overview_service_offerings__entry__25">Third-party integrations</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__26">
+<p>Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__27">
+<p>Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.</p>
+</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__28">Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.</td>
+<td class="entry" headers="oaaws_overview_service_offerings__entry__29">Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.</td>
+</tr>
+</tbody></table></div>
+</div>
+</article>
+<article aria-labelledby="ariaid-title8" class="topic nested1" id="use-cases">
+<h2 class="title topictitle2 vl-include-in-page-toc" id="ariaid-title8">Use Cases</h2>
+<div class="body">
+<ul>
+<li><a class="xref" href="#oracle-exadata-database-service">Oracle Exadata Database Service</a><ul>
+<li><a class="xref" href="#exadata-small-enterprises">Small Enterprises</a></li>
+<li><a class="xref" href="#exadata-mid-sized-enterprises">Mid-Sized Enterprises</a></li>
+<li><a class="xref" href="#exadata-large-enterprises">Large Enterprises</a></li>
+</ul></li>
+<li><a class="xref" href="#oracle-autonomous-ai-database">Oracle Autonomous AI Database</a><ul>
+<li><a class="xref" href="#autonomous-small-enterprises">Small Enterprises</a></li>
+<li><a class="xref" href="#autonomous-mid-sized-enterprises">Mid-Sized Enterprises</a></li>
+<li><a class="xref" href="#autonomous-large-enterprises">Large Enterprises</a></li>
+</ul></li>
+</ul>
+</div>
+<article aria-labelledby="ariaid-title9" class="topic concept nested2" id="oracle-exadata-database-service">
+<h3 class="title topictitle3" id="ariaid-title9">Oracle Exadata Database Service</h3>
+<div class="body conbody">
+<p>Oracle Exadata Database Service offers a predictable performance, scalable, and reliable database solution for enterprises with demanding workloads and specific compliance requirements.</p>
+</div>
+<article aria-labelledby="ariaid-title10" class="topic nested3" id="exadata-small-enterprises">
+<h4 class="title topictitle4" id="ariaid-title10">Small Enterprises</h4>
+<div class="body">
+<p>While Exadata Database Service is typically chosen by larger enterprises, small businesses with specific compliance or performance requirements can also benefit. For example, a small financial services firm dealing with sensitive data might require the dedicated infrastructure and extreme performance that Exadata offers.</p>
+<p>
+<em>Example:</em> A boutique investment firm handling sensitive financial data uses Exadata Database Service because it provides them with a dedicated, highly secure, and high performance database environment, and lets them meet strict regulatory compliance standards.</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title11" class="topic nested3" id="exadata-mid-sized-enterprises">
+<h4 class="title topictitle4" id="ariaid-title11">Mid-Sized Enterprises</h4>
+<div class="body">
+<p>Mid-sized enterprises with high-volume, mission-critical workloads can benefit from the power and scalability of Exadata Database Service. It provides them with the performance, reliability, and availability needed to support their critical applications.</p>
+<p>
+<em>Example:</em> A mid-sized online gaming company with millions of concurrent users uses Exadata Database Service because the platform's extreme performance and scalability can handle the high-volume transactional workload, ensuring a seamless and responsive user experience.</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title12" class="topic nested3" id="exadata-large-enterprises">
+<h4 class="title topictitle4" id="ariaid-title12">Large Enterprises</h4>
+<div class="body">
+<p>Large enterprises with demanding enterprise applications, data warehouses, or consolidation projects can use Exadata Database Service to handle massive data volumes, high concurrency, and complex queries with ease.</p>
+<p>
+<em>Example:</em> A large telecommunications company with terabytes of data and complex analytical queries can use Exadata Database Service because the platform's parallel processing and in-memory capabilities speed up query performance, enabling faster decision-making and improved operational efficiency.</p>
+</div>
+</article>
+</article>
+<article aria-labelledby="ariaid-title13" class="topic concept nested2" id="oracle-autonomous-ai-database">
+<h3 class="title topictitle3" id="ariaid-title13">Oracle Autonomous AI Database
+</h3>
+<div class="body conbody">
+<p>Oracle Autonomous AI Database is an excellent choice for enterprises of all sizes, offering high performance, flexibility and economical database solutions.</p>
+</div>
+<article aria-labelledby="ariaid-title14" class="topic nested3" id="autonomous-small-enterprises">
+<h4 class="title topictitle4" id="ariaid-title14">Small Enterprises</h4>
+<div class="body">
+<p>Small businesses often have dynamic and unpredictable workloads. Autonomous AI Database is ideal for this scenario. It lets small enterprises focus on their core business without the overhead of managing database infrastructure.</p>
+<p>
+<em>Example:</em> A small e-commerce startup uses Autonomous AI Database as the foundation of its online store because the database can scale automatically based on demand, ensuring the best performance during peak sales periods and lowering costs when demand is low.</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title15" class="topic nested3" id="autonomous-mid-sized-enterprises">
+<h4 class="title topictitle4" id="ariaid-title15">Mid-Sized Enterprises</h4>
+<div class="body">
+<p>Mid-sized enterprises often have growing data needs that require a cost-effective and scalable solution. Autonomous AI Database lets them to pay for only what they use, making it a flexible and economical choice.</p>
+<p>
+<em>Example:</em> A mid-sized SaaS company offering customer relationship management (CRM) solutions uses Autonomous AI Database for their service. As their customer base grows, the database can scale seamlessly, ensuring they only pay for the resources consumed during that period. This helps them manage costs effectively while delivering a reliable service to their clients.</p>
+</div>
+</article>
+<article aria-labelledby="ariaid-title16" class="topic nested3" id="autonomous-large-enterprises">
+<h4 class="title topictitle4" id="ariaid-title16">Large Enterprises</h4>
+<div class="body">
+<p>Large enterprises often have diverse database requirements, including handling critical and unpredictable workloads. Autonomous AI Database provides the flexibility to accommodate such needs without the complexity of managing the infrastructure.</p>
+<p>
+<em>Example:</em> A large retail chain use Autonomous AI Database for its inventory management system. During seasonal sales or promotional events, the database can automatically scale to handle increased transaction volumes, ensuring smooth operations. The autonomous capabilities also reduce the burden on the IT team, letting them to focus on strategic initiatives.</p>
+</div>
+</article>
+</article>
+</article>
+</article>
+</article>
+<div class="uk-hidden@l">
+<div class="vl-cfs-mount vl-cfs-m" id="vl-cfs-mount-footer"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="vl-floating-toc-container uk-visible@l" vl-floating-toc="">
+<div class="vl-floating-toc-container-inner" vl-floating-toc-inner="">
+<div id="content-toolbar-mount"></div>
+<ul class="uk-nav uk-nav-default vl-floating-toc" uk-scrollspy-nav="closest: li; offset: 50">
+<li class="vl-floating-toc-h1">
+<a href="#top">
+                                Oracle AI Database@AWS
+
+                              </a>
+</li>
+<li class="vl-floating-toc-h2">
+<a href="#benefits">
+                                Benefits of Using Oracle AI Database@AWS
+
+                              </a>
+</li>
+<li class="vl-floating-toc-h2">
+<a href="#oaaws_overview_service_offerings">
+                                Available Database Services
+                              </a>
+</li>
+<li class="vl-floating-toc-h2">
+<a href="#use-cases">
+                                Use Cases
+                              </a>
+</li>
+</ul>
+<div class="vl-cfs-mount vl-cfs-l" id="vl-cfs-mount"></div>
+<div class="uk-nav uk-nav-default" id="vl-dts-mount"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<footer class="vl-footer uk-section uk-section-secondary uk-section-small uk-text-xsmall uk-text-muted" data-trackas="dcoc-footer" vl-footer="">
+<div class="uk-container vl-container-xlarge">
+<ul class="uk-subnav uk-flex-center" uk-margin="">
+<li class="legal"><span>Copyright © 2026, Oracle and/or its affiliates.</span></li>
+<li class="legal"><a href="https://www.oracle.com/corporate/index.html">About Oracle</a></li>
+<li class="legal"><a href="https://www.oracle.com/corporate/contact/index.html">Contact Us</a></li>
+<li class="legal"><a href="/iaas/Content/legalnotices.htm">Legal Notices</a></li>
+<li class="legal"><a href="https://www.oracle.com/legal/privacy/">Terms of Use &amp; Privacy</a></li>
+<li class="legal"><a href="/iaas/Content/General/Reference/docconventions.htm">Document Conventions</a></li>
+<li id="teconsent"></li>
+</ul>
+</div>
+</footer>
+<script src="/iaas/build/front-end.js?eb7e1ef39f45a2c3300df51c2c9b18e04c6a09266e7c409b1b37ea8598ea9f24"></script>
+ 
+ 
+</body>
+</html>

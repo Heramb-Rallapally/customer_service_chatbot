@@ -1,0 +1,190 @@
+
+
+
+Oracle Cloud Infrastructure Documentation
+
+
+All Pages
+
+Skip to main content
+
+Oracle AI Database@Google Cloud
+Learn about using Oracle AI Database@Google Cloud to run Oracle databases in your existing Google Cloud environment.
+Oracle AI Database@Google Cloud is a database service that lets you to access OCI managed Oracle Exadata infrastructure inside Google Cloud data centers.
+The service lets you to migrate on-premises Oracle workloads to Google Cloud, giving your business-critical applications low-latency connectivity to your Oracle databases. With Oracle AI Database@Google Cloud, you also have access to Oracle Real Application Clusters (RAC) and Oracle Exadata performance for mission-critical applications in Google Cloud. The service integrates with other Google Cloud services, and you get a single invoice through Google Cloud Marketplace that includes Oracle AI Database@Google Cloud billing. Oracle AI Database@Google Cloud usage counts toward Google Cloud Commitment.
+The following high-level architecture diagram shows how an OCI region (parent site) is connected with an Google Cloud region's Oracle Zone (child site) through an OCI managed network as part of Oracle AI Database@Google Cloud. An application server deployed on Google Cloud VM connects to the Oracle databases deployed in an Oracle Database (ODB) network. The control plane, which is highly available and fault-tolerant, is deployed in the OCI Region and offers a seamless database management and administration experience.
+￼
+Benefits of Using Oracle AI Database@Google Cloud
+Oracle AI Database@Google Cloud offers a powerful and flexible solution for running Oracle workloads directly within Google Cloud. Key benefits include the following features:
+Simplified Migration
+Oracle AI Database@Google Cloud lets you seamlessly migrate your Oracle workloads to either Oracle Exadata Database Service on Dedicated Infrastructure or Oracle Autonomous AI Database, deployed within Google Cloud. These migrations require minimal database changes, retain full Oracle feature sets, maintain architectural compatibility, and deliver performance equal to on-premises environments. Supported migration tools include RMAN, Oracle Data Guard, transportable tablespaces, Oracle Data Pump, Oracle GoldenGate, and Oracle Zero Downtime Migration (ZDM).
+Low-Latency Connectivity
+Hosting Oracle AI Database close to your Google Cloud applications reduces network latency, which ensures faster response times and improved application performance. This proximity minimizes data transfer delays and optimizes system efficiency.
+Unified Management and Operations
+Oracle AI Database@Google Cloud offers a cohesive operational experience with integrated purchasing, support, and lifecycle management across Oracle and Google Cloud. It supports your existing Google Cloud commitments and Oracle license entitlements. You can manage Oracle resources using Google Cloud API, CLI, and SDK, which internally invoke the necessary OCI APIs for provisioning and management.
+Seamless Integration
+Oracle AI Database@Google Cloud seamlessly integrates with core Google Cloud services such as Google Compute Engine, Virtual Private Network (VPC), and IAM, enabling cohesive security and infrastructure management. It also supports Google Cloud-native tools such as Google Cloud Observability for monitoring.
+Available Database Services
+Oracle AI Database@Google Cloud offers the following Oracle database services:
+
+Service Name
+Available Versions
+Private Offer Eligible?
+Public Offer Eligible?
+Oracle Exadata Database Service on Dedicated Infrastructure
+19c, 26ai
+Yes
+No
+Oracle Exadata Database Service on Exascale Infrastructure
+19c, 26ai
+Yes
+Yes
+Oracle Base Database Service
+19c, 26ai
+Yes
+Yes
+Oracle Autonomous AI Database
+19c, 26ai
+Yes
+Yes
+Oracle GoldenGate
+21c, 26ai
+Yes
+Yes
+Oracle Database Autonomous Recovery Service
+NA
+Yes
+No
+Oracle Exadata Database Service on Dedicated Infrastructure, Oracle Exadata Database Service on Exascale Infrastructure, Oracle Base Database Service, and Oracle Autonomous AI Database use the same underlying high-performance hardware optimized for database workloads, but they each offer distinct advantages to meet different customer needs.
+
+Characteristic
+Oracle Exadata Database Service on Dedicated Infrastructure
+Oracle Exadata Database Service on Exascale Infrastructure
+Oracle Base Database Service
+Oracle Autonomous AI Database
+Usage
+Fully managed dedicated infrastructure for running Oracle databases. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring of the database belongs to the customer.
+Fully managed shared infrastructure for running Oracle databases. It delivers Exadata intelligence with all cloud benefits including pay-per-use economics and a low entry cost.
+Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring of the database belongs to the customer.
+Fully managed shared infrastructure for running single instance Oracle databases using low-cost general-purpose infrastructure to provide VM compute and network attached storage. Suitable for running your choice of Database editions.
+Fully managed, elastic, and scalable database service. Designed for variable workloads, cloud native applications, and flexible usage, automatically scaling resources up and down as needed. Minimal admin effort needed.
+Performance
+Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.
+Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.
+Offers consistent and predictable performance for general purpose, business critical enterprise level workloads.
+Provides high performance with automatic scaling. Delivers low latency and high throughput, leveraging the elasticity of the cloud.
+Management
+Requires manual management and administration, including database configuration, tuning, and maintenance.
+Requires manual management and administration of the database including configuration, tuning, and maintenance.
+Requires manual management and administration, including database configuration, tuning, and maintenance.
+Self-driving and self-managing, automating tasks such as provisioning, scaling, tuning, patching, and backups.
+Operations
+Cloud automation provides the creation, maintenance updates, and basic monitoring for databases. Database administrators need to tune the database, apply maintenance updates, and configure additional database monitoring. Strong Oracle support problem resolution model.
+Cloud automation provides the creation, maintenance updates, and basic monitoring for databases. Database administrators need to tune the database, apply maintenance updates, and configure additional database monitoring. Strong Oracle support problem resolution model.
+Cloud automation provides the creation, maintenance updates, and basic monitoring for databases. Database administrators need to tune the database, apply maintenance updates, and configure additional database monitoring. Strong Oracle support problem resolution model.
+Reduces operational overhead, as Oracle manages most administrative tasks. Customers only need to focus on application development and data management.
+Cost
+Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs allocated to VM Cluster resources. Provides predictable pricing.
+Upfront subscription cost for shared infrastructure and pay-per-use for ECPUs allocated to VM Cluster resources. Provides predictable pricing at a lower entry point.
+Upfront subscription cost for shared infrastructure and pay-per-use for ECPUs allocated to VM Cluster resources. Choice of database edition enables lower costs.
+Uses a pay-as-you-go model, charging based on actual resource consumption. Costs scale up and down with usage, providing flexibility and potential cost savings.
+Scaling
+Provides elastic scaling for infrastructure so you can vertically and horizontally scale when you need more resources for your workloads.
+Provides elastic scaling of VM Clusters and corresponding storage so you scale when you need more resources for your workloads.
+Provide elastic independent scaling of ECPUs and storage so you scale when you need more resources for your workloads.
+Offers automatic and elastic scaling. Can scale up and down based on workload demands without manual intervention, providing true serverless scalability.
+Security
+Robust security features including encryption, security patches, and operator access controls for infrastructure. Customers are responsible for security configuration and management.
+Robust security features including encryption, security patches, and operator access controls for infrastructure. Customers are responsible for security configuration and management.
+Robust security features including encryption, security patches, and operator access controls for infrastructure. Customers are responsible for security configuration and management.
+Built-in security with automatic data encryption, user authentication, and threat detection. Oracle manages security updates and patches.
+Configuration
+Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning.
+No infrastructure provisioning required. Full control over VM and database configuration but default values suggested in provisioning.
+No infrastructure provisioning required. Full control over VM and database configuration but default values suggested in provisioning.
+Pre-configured and instantly provisioned, requiring minimal setup and configuration.
+Patching
+Infrastructure security and maintenance updates applied automatically on configured schedule. You receive Database, Grid Infrastructure, and Guest OS patches, which you apply based on your schedule.
+Infrastructure security and maintenance updates applied automatically on configured schedule. You receive Database, Grid Infrastructure, and Guest OS patches, which you apply based on your schedule.
+You receive Database, Grid Infrastructure, and Guest OS patches, which you apply based on your schedule.
+Automatic patching with no downtime, managed by Oracle.
+Isolation
+Complete isolation as customers has their own dedicated infrastructure.
+Virtual machine isolation as well as the corresponding storage for database files.
+Virtual machine isolation as well as the corresponding storage for database files.
+Data isolation through dedicated database instances, ensuring customer data separation.
+Flexibility
+Offers flexibility in customization within the VM for existing app scripts and dependent libraries, so easiest lift and shift to cloud.
+Start with a single node VM and scale up to a 10 node VM Cluster and 200 ECPU per VM. Offers flexibility in customization within the VM for existing app scripts and dependent libraries, so easiest lift and shift to cloud.
+Start with 4 ECPUs and 300 GB of storage and scale up to 200 ECPUs and 40 TB of storage. Offers flexibility in customization within the VM for existing app scripts and dependent libraries, so easiest lift and shift to cloud.
+Fully managed and monitored by Oracle. Provides flexibility in usage and scaling, adapting to dynamic workload demands.
+Third-party integrations
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Use Cases
+Oracle Exadata Database Service on Dedicated Infrastructure, Oracle Exadata Database Service on Exascale Infrastructure, Oracle Base Database Service and Oracle Autonomous AI Database offer high performance and run on the Oracle optimized hardware, the choice depends on the specific needs of the enterprise. Each service has it's advantages:
+	•	Exadata Database Service on Dedicated Infrastructure provides dedicated infrastructure, predictable performance, and customization, making it a good choice for mission-critical, latency-sensitive applications, especially in regulated industries.
+	•	Exadata Database Service on Exascale Infrastructure provides shared infrastructure, predictable performance, and customization, making it a good choice for mission-critical, latency-sensitive applications.
+	•	Base Database Service provides fully managed shared infrastructure for running single instance Oracle databases using low-cost general-purpose infrastructure suitable for running your choice of Database editions.
+	•	Autonomous AI Database offers flexibility, automation, and dynamic scaling, making it ideal for variable workloads and cloud native applications.
+Oracle Exadata Database Service on Dedicated Infrastructure
+Oracle Exadata Database Service on Dedicated Infrastructure offers a predictable performance, scalable, and reliable database solution for enterprises with demanding workloads and specific compliance requirements.
+Small Enterprises
+While Exadata Database Service is typically chosen by larger enterprises, small businesses with specific compliance or performance requirements can also benefit. For example, a small financial services firm dealing with sensitive data might require the dedicated infrastructure and extreme performance that Exadata offers.
+Example: A boutique investment firm handling sensitive financial data uses Exadata Database Service because it provides them with a dedicated, highly secure, and high performance database environment, and lets them meet strict regulatory compliance standards.
+Mid-Sized Enterprises
+Mid-sized enterprises with high-volume, mission-critical workloads can benefit from the power and scalability of Exadata Database Service. It provides them with the performance, reliability, and availability needed to support their critical applications.
+Example: A mid-sized online gaming company with millions of concurrent users uses Exadata Database Service because the platform's extreme performance and scalability can handle the high-volume transactional workload, ensuring a seamless and responsive user experience.
+Large Enterprises
+Large enterprises with demanding enterprise applications, data warehouses, or consolidation projects can use Exadata Database Service to handle massive data volumes, high concurrency, and complex queries with ease.
+Example: A large telecommunications company with terabytes of data and complex analytical queries can use Exadata Database Service because the platform's parallel processing and in-memory capabilities speed up query performance, enabling faster decision-making and improved operational efficiency.
+Oracle Exadata Database Service on Exascale Infrastructure
+Oracle Exadata Database Service on Exascale Infrastructure offers a predictable performance, scalable, and reliable database solution for enterprises with smaller workloads with Exadata benefits.
+Small Enterprises
+Exadata Database Service on Exascale Infrastructure is ideally suited for small businesses with Exadata performance requirements. For example, a small financial services firm dealing with sensitive data might require extreme performance that Exadata offers.
+Example: A small hospital using Medical Data of Clinical & Patient Record Management Systems supprting research analytics and clinical applications. Delivered high performance for critical workloads, including OLTP and genomic data analysis, with streamlined database management and optimized IT operations.
+Mid-Sized Enterprises
+Mid-sized enterprises with high-volume, mission-critical workloads can benefit from the power and scalability of Exadata Database Service on Exascale Infrastructure. It provides them with the performance, reliability, and availability needed to support their critical applications.
+Example: ISVs that require local database presence in many regions with variable market sizes in each region that require Exadata performance and availability for their mission critical applications. Exadata Database Service on Exascale Infrastructure provides low entry point to each market and easily scales as that market grows.
+Large Enterprises
+Large enterprises with demanding enterprise applications, data warehouses, or consolidation projects can use Exadata Database Service on Exascale Infrastructure to handle massive data volumes, high concurrency, and complex queries with ease.
+Example: A large multinational company that operates departments or regions separately, each with their own budgets. Exadata Database Service on Exascale Infrastructure provides the ability to right-size the Exadata infrastructure according to each department size or budget.
+Oracle Base Database Service
+Oracle Base Database Service is an excellent choice to run single instance Oracle databases using low-cost general-purpose infrastructure to provide VM compute and network attached storage and running your choice of Database editions.
+Small Enterprises
+Small businesses with limited Oracle footprint and using Oracle applications such as E-Business Suite, JD Edwards, PeopleSoft.
+Example: A small university wanted to avoid any downtime to core administrative systems, because it would be extremely disruptive to operations. After migrating its JD Edwards financial management and procurement applications to Oracle Cloud Infrastructure (OCI) with Oracle AI Database, the university saw improved productivity and availability.
+Mid-Sized Enterprises
+Mid-sized enterprises often have growing data needs that require a cost-effective and scalable solution. Base Database Service allows customers to select database edition and scale resources to meet their workloads.
+Example: A mid-size insurance, a provider of life, health, motor, and corporate insurance offers seamless digital services to its customers. Managing its core customer policy lifecycle applications on an aging on-premises infrastructure was costly and complex, prompting the need for a more efficient solution. After migration to Oracle Base Database Service, the company recognized a noticeable operational cost reduction while improving system performance.
+Large Enterprises
+Large enterprises often have diverse database requirements, including handling critical and unpredictable workloads. Basse Database Service allows customers to scale up to 200 ECPUs and 40 TB of storage to run critical application while maintaining flexibility and operational control.
+Example: A large luggage manufacturing and retailer used Oracle APEX on Base Database Service to deploy a luggage-as-a-service application that supports customers globally with reduced downtime and costs. The app is designed to save time and money by handling passenger claims and repairs for damaged luggage.
+Oracle Autonomous AI Database
+Oracle Autonomous AI Database is an excellent choice for enterprises of all sizes, offering high performance, flexibility and economical database solutions.
+Small Enterprises
+Small businesses often have dynamic and unpredictable workloads. Autonomous AI Database is ideal for this scenario. It lets small enterprises focus on their core business without the overhead of managing database infrastructure.
+Example: A small e-commerce startup uses Autonomous AI Database as the foundation of its online store because the database can scale automatically based on demand, ensuring the best performance during peak sales periods and lowering costs when demand is low.
+Mid-Sized Enterprises
+Mid-sized enterprises often have growing data needs that require a cost-effective and scalable solution. Autonomous AI Database lets them to pay for only what they use, making it a flexible and economical choice.
+Example: A mid-sized SaaS company offering customer relationship management (CRM) solutions uses Autonomous AI Database for their service. As their customer base grows, the database can scale seamlessly, ensuring they only pay for the resources consumed during that period. This helps them manage costs effectively while delivering a reliable service to their clients.
+Large Enterprises
+Large enterprises often have diverse database requirements, including handling critical and unpredictable workloads. Autonomous AI Database provides the flexibility to accommodate such needs without the complexity of managing the infrastructure.
+Example: A large retail chain use Autonomous AI Database for its inventory management system. During seasonal sales or promotional events, the database can automatically scale to handle increased transaction volumes, ensuring smooth operations. The autonomous capabilities also reduce the burden on the IT team, letting them to focus on strategic initiatives.
+
+
+	•	Oracle AI Database@Google Cloud
+	•	Benefits of Using Oracle AI Database@Google Cloud
+	•	Available Database Services
+	•	Use Cases
+
+
+	•	Copyright © 2026, Oracle and/or its affiliates.
+	•	About Oracle
+	•	Contact Us
+	•	Legal Notices
+	•	Terms of Use & Privacy
+	•	Document Conventions
+	•	

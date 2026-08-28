@@ -1,0 +1,169 @@
+
+
+
+Oracle Cloud Infrastructure Documentation
+
+
+All Pages
+
+Skip to main content
+
+Oracle AI Database@AWS
+Oracle AI Database@AWS is a cloud database service that lets you to access OCI managed Oracle Exadata infrastructure inside AWS data centers.
+The service lets you to migrate on-premises Oracle workloads to AWS, giving your business-critical applications low-latency connectivity to your Oracle databases. With Oracle AI Database@AWS, you also have access to Oracle Real Application Clusters (RAC) and Oracle Exadata performance for mission-critical applications in AWS. The service integrates with other AWS services, and you get a single invoice through AWS Marketplace that includes Oracle AI Database@AWS billing. Oracle AI Database@AWS usage counts toward AWS commitments.
+The following high-level architecture diagram shows how an OCI region (parent site) is connected with an AWS region's Availability Zone (child site) through an OCI managed network as part of Oracle AI Database@AWS. An application server deployed on Amazon EC2 connects to the Oracle databases deployed in an Oracle Database (ODB) network through ODB peering. The control plane, which is highly available and fault-tolerant, is deployed in the OCI Region and offers a seamless database management and administration experience.
+￼
+Benefits of Using Oracle AI Database@AWS
+Oracle AI Database@AWS offers a powerful and flexible solution for running Oracle workloads directly within AWS. Key benefits include:
+	•	Simplified Migration
+	•	Low-Latency Connectivity
+	•	Unified Management and Operations
+	•	Seamless Integration
+Simplified Migration
+Oracle AI Database@AWS lets you seamlessly migrate your Oracle workloads to either Oracle Exadata Database Service on Dedicated Infrastructure or Oracle Autonomous AI Database on Dedicated Exadata Infrastructure, deployed within AWS. These migrations require minimal database changes, retain full Oracle feature sets, maintain architectural compatibility, and deliver performance equal to on-premises environments. Supported migration tools include RMAN, Oracle Data Guard, transportable tablespaces, Oracle Data Pump, Oracle GoldenGate, and Oracle Zero Downtime Migration (ZDM).
+Low-Latency Connectivity
+Hosting Oracle Database close to your AWS applications reduces network latency, which ensures faster response times and improved application performance. This proximity minimizes data transfer delays and optimizes system efficiency.
+Unified Management and Operations
+Oracle AI Database@AWS offers a cohesive operational experience with integrated purchasing, support, and lifecycle management across Oracle and AWS. It supports your existing AWS commitments and Oracle license entitlements. You can manage Oracle resources using AWS's APIs, CLI, and SDKs, which internally invoke the necessary OCI APIs for provisioning and management.
+Seamless Integration
+Oracle AI Database@AWS seamlessly integrates with core AWS services like Amazon EC2, VPC, and IAM, enabling cohesive security and infrastructure management. It also supports AWS-native tools such as Amazon CloudWatch for monitoring, Amazon EventBridge for automation, and Amazon S3 for highly durable backups.
+Available Database Services
+Oracle AI Database@AWS offers the following Oracle database services:
+
+Service name
+Available versions
+Private Offer eligible?
+Public Offer eligible?
+Oracle Exadata Database Service on Dedicated Infrastructure
+19c, 26ai
+Yes
+No
+Oracle Exadata Database Service on Exascale Infrastructure
+19c, 26ai
+Yes
+Yes
+Oracle Autonomous AI Database on Dedicated Exadata Infrastructure
+19c, 26ai
+Yes
+No
+Oracle Database Autonomous Recovery Service
+NA
+Yes
+No
+Oracle Autonomous AI Database Serverless
+19c, 26ai
+Yes
+Yes
+Oracle Exadata Database Service on Dedicated Infrastructure, Oracle Exadata Database Service on Exascale Infrastructure, and Oracle Autonomous AI Database use the same underlying high-performance hardware optimized for database workloads, but they each offer distinct advantages to meet different customer needs.
+
+Characteristic
+Oracle Exadata Database Service
+Oracle Autonomous AI Database on Dedicated Exadata Infrastructure
+Oracle Exadata Database Service on Exascale Infrastructure
+Oracle Autonomous AI Database
+Usage
+Fully managed dedicated infrastructure for running Oracle databases. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring of the database belongs to the customer.
+Fully managed database service (Infrastructure, OS, Database) for running Oracle databases. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring is delegated to Oracle.
+Fully managed database service (Infrastructure, OS, Database) for running Oracle AI Database. Suitable for mission-critical, latency-sensitive workloads requiring predictable performance where operational monitoring is delegated to Oracle.
+Fully managed, elastic, and scalable database service. Designed for variable workloads, cloud native applications, and flexible usage, automatically scaling resources up and down as needed. Minimal admin effort needed.
+Performance
+Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.
+Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.
+Offers consistent and predictable high performance with low latency because of optimized hardware and software integration.
+Provides high performance with automatic scaling. Delivers low latency and high throughput, leveraging the elasticity of the cloud.
+Management
+Requires manual management and administration, including database configuration, tuning, and maintenance.
+Fully managed with optional self-tuning features and automated admin tasks such as provisioning, scaling, patching, cloning and backups.
+Fully managed with optional self-tuning features and automated admin tasks such as provisioning, scaling, patching, cloning and backups.
+Self-driving and self-managing, automating tasks such as provisioning, scaling, tuning, patching, and backups.
+Operations
+Cloud automation provides the creation, maintenance updates, and basic monitoring for databases. Database administrators need to tune the database, apply maintenance updates, and configure additional database monitoring. Strong Oracle support problem resolution model.
+Reduced operational overhead, as Oracle manages administrative tasks. Customers only need to focus on application development and data management. Moves to a DevOps problem resolution model.
+Reduced operational overhead, as Oracle manages administrative tasks. Customers only need to focus on application development and data management. Moves to a DevOps problem resolution model.
+Reduces operational overhead, as Oracle manages most administrative tasks. Customers only need to focus on application development and data management.
+Cost
+Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs allocated to VM Cluster resources. Provides predictable pricing.
+Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs actively running Autonomous AI Databases. Provides lowest total-cost-of-ownership.
+Upfront subscription cost for dedicated infrastructure and pay-per-use for CPUs actively running autonomous databases. Provides lowest total-cost-of-ownership.
+Uses a pay-as-you-go model, charging based on actual resource consumption. Costs scale up and down with usage, providing flexibility and potential cost savings.
+Scaling
+Provides elastic scaling for infrastructure so you can vertically and horizontally scale when you need more resources for your workloads.
+Provides the same elastic scaling for infrastructure resources, but also provides auto-scaling at the database level, no need to scale at infrastructure to optimize cost.
+Provides the same elastic scaling for infrastructure resources, but also provides auto-scaling at the database level, no need to scale at infrastructure to optimize cost.
+Offers automatic and elastic scaling. Can scale up and down based on workload demands without manual intervention, providing true serverless scalability.
+Security
+Robust security features including encryption, security patches, and operator access controls for infrastructure. Customers are responsible for security configuration and management.
+Mandatory security configuration by default. Database runs in Database Vault realms, customers can bring encryption keys and certificates. Operator access control for infrastructure and virtualization resources.
+Mandatory security configuration by default. Database runs in Database Vault realms, customers can bring encryption keys and certificates. Operator access control for infrastructure and virtualization resources.
+Built-in security with automatic data encryption, user authentication, and threat detection. Oracle manages security updates and patches.
+Configuration
+Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning.
+Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning and specialized best practice defaults for OLTP / Data Warehouse workload.
+Requires initial configuration and setup, including hardware provisioning and software installation. Full control over configuration but default values suggested in provisioning and specialized best practice defaults for OLTP and Data Warehouse workload.
+Pre-configured and instantly provisioned, requiring minimal setup and configuration.
+Patching
+Infrastructure security and maintenance updates applied automatically on configured schedule. You receive Database, Grid Infrastructure, and Guest OS patches, which you apply based on your schedule.
+Policy defined, hands free patching for entire service stack: Infrastructure, OS, Grid and database. Automation for one-off patches and ability to set custom governance workflows to control software change from Dev to Prod.
+Policy-defined, hands-free patching for entire service stack: Infrastructure, OS, Grid and database. Automation for one-off patches and ability to set custom governance workflows to control software change from Dev to Prod.
+Automatic patching with no downtime, managed by Oracle.
+Isolation
+Complete isolation as customers has their own dedicated infrastructure.
+Complete isolation as customers has their own dedicated infrastructure.
+Complete isolation as customers has their own dedicated infrastructure.
+Data isolation through dedicated database instances, ensuring customer data separation.
+Flexibility
+Offers flexibility in customization within the VM for existing app scripts and dependent libraries, so easiest lift and shift to cloud.
+Fully managed and monitored by Oracle, so no in VM changes. Provides most flexibility in usage and scaling, adapting to dynamic workload demands.
+Fully managed and monitored by Oracle, so no in VM changes. Provides most flexibility in usage and scaling, adapting to dynamic workload demands.
+Fully managed and monitored by Oracle. Provides flexibility in usage and scaling, adapting to dynamic workload demands.
+Third-party integrations
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Integrates with third-party tools and applications through Oracle's extensive partner ecosystem and APIs.
+Use Cases
+	•	Oracle Exadata Database Service
+	◦	Small Enterprises
+	◦	Mid-Sized Enterprises
+	◦	Large Enterprises
+	•	Oracle Autonomous AI Database
+	◦	Small Enterprises
+	◦	Mid-Sized Enterprises
+	◦	Large Enterprises
+Oracle Exadata Database Service
+Oracle Exadata Database Service offers a predictable performance, scalable, and reliable database solution for enterprises with demanding workloads and specific compliance requirements.
+Small Enterprises
+While Exadata Database Service is typically chosen by larger enterprises, small businesses with specific compliance or performance requirements can also benefit. For example, a small financial services firm dealing with sensitive data might require the dedicated infrastructure and extreme performance that Exadata offers.
+Example: A boutique investment firm handling sensitive financial data uses Exadata Database Service because it provides them with a dedicated, highly secure, and high performance database environment, and lets them meet strict regulatory compliance standards.
+Mid-Sized Enterprises
+Mid-sized enterprises with high-volume, mission-critical workloads can benefit from the power and scalability of Exadata Database Service. It provides them with the performance, reliability, and availability needed to support their critical applications.
+Example: A mid-sized online gaming company with millions of concurrent users uses Exadata Database Service because the platform's extreme performance and scalability can handle the high-volume transactional workload, ensuring a seamless and responsive user experience.
+Large Enterprises
+Large enterprises with demanding enterprise applications, data warehouses, or consolidation projects can use Exadata Database Service to handle massive data volumes, high concurrency, and complex queries with ease.
+Example: A large telecommunications company with terabytes of data and complex analytical queries can use Exadata Database Service because the platform's parallel processing and in-memory capabilities speed up query performance, enabling faster decision-making and improved operational efficiency.
+Oracle Autonomous AI Database
+Oracle Autonomous AI Database is an excellent choice for enterprises of all sizes, offering high performance, flexibility and economical database solutions.
+Small Enterprises
+Small businesses often have dynamic and unpredictable workloads. Autonomous AI Database is ideal for this scenario. It lets small enterprises focus on their core business without the overhead of managing database infrastructure.
+Example: A small e-commerce startup uses Autonomous AI Database as the foundation of its online store because the database can scale automatically based on demand, ensuring the best performance during peak sales periods and lowering costs when demand is low.
+Mid-Sized Enterprises
+Mid-sized enterprises often have growing data needs that require a cost-effective and scalable solution. Autonomous AI Database lets them to pay for only what they use, making it a flexible and economical choice.
+Example: A mid-sized SaaS company offering customer relationship management (CRM) solutions uses Autonomous AI Database for their service. As their customer base grows, the database can scale seamlessly, ensuring they only pay for the resources consumed during that period. This helps them manage costs effectively while delivering a reliable service to their clients.
+Large Enterprises
+Large enterprises often have diverse database requirements, including handling critical and unpredictable workloads. Autonomous AI Database provides the flexibility to accommodate such needs without the complexity of managing the infrastructure.
+Example: A large retail chain use Autonomous AI Database for its inventory management system. During seasonal sales or promotional events, the database can automatically scale to handle increased transaction volumes, ensuring smooth operations. The autonomous capabilities also reduce the burden on the IT team, letting them to focus on strategic initiatives.
+
+
+	•	Oracle AI Database@AWS
+	•	Benefits of Using Oracle AI Database@AWS
+	•	Available Database Services
+	•	Use Cases
+
+
+	•	Copyright © 2026, Oracle and/or its affiliates.
+	•	About Oracle
+	•	Contact Us
+	•	Legal Notices
+	•	Terms of Use & Privacy
+	•	Document Conventions
+	•	
