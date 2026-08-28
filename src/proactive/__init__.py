@@ -13,13 +13,21 @@ from .interfaces import (
 )
 from .service import ProactiveSupportService
 from .sentiment import OciSentimentAnalyzer, RuleBasedSentimentAnalyzer
+from .providers import (
+    ConversationMemoryHistoryProvider,
+    RetrievalEvidenceProvider,
+    SupportLevel,
+)
 
 __all__ = [
     "HistoryProvider",
+    "ConversationMemoryHistoryProvider",
     "OciSentimentAnalyzer",
     "ProactiveSupportService",
     "RecommendationProvider",
+    "RetrievalEvidenceProvider",
     "RuleBasedSentimentAnalyzer",
     "SentimentAnalyzer",
     "UnsupportedIssueDetector",
+    "SupportLevel",
 ]

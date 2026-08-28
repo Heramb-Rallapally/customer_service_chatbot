@@ -106,3 +106,10 @@ authenticated user cannot continue another user's conversation.
 local development. Configure `ORACLE_CONVERSATION_TABLE` after provisioning the
 documented Oracle schema to select durable, optimistic-concurrency memory in
 the application composition root. See [conversation memory documentation](docs/conversation-memory.md).
+
+## Proactive providers
+
+The application composition root wires retrieval-backed proactive
+recommendations, evidence-based unsupported-issue detection, and
+user-isolated conversation history. See [proactive provider documentation](docs/proactive-providers.md)
+for dependency, graceful-degradation, and OCI sentiment-injection details.

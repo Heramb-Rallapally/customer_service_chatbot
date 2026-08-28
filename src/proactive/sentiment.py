@@ -66,6 +66,6 @@ class OciSentimentAnalyzer:
         else:
             result = getattr(result, "sentiment", result)
         try:
-            return Sentiment(str(result).upper())
+            return Sentiment(str(result).strip().upper())
         except (TypeError, ValueError):
             return Sentiment.UNKNOWN

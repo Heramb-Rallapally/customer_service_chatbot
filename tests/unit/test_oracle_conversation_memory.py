@@ -32,7 +32,7 @@ class FakeCursor:
         if self._connection.failure is not None:
             raise self._connection.failure
         normalized = " ".join(statement.upper().split())
-        conversation_id = str(parameters["conversation_id"])
+        conversation_id = str(parameters["conversation_id"]) if "conversation_id" in parameters else ""
         row = self._connection.rows.get(conversation_id)
         if normalized.startswith("SELECT STATE_JSON, VERSION"):
             self._row = None if row is None else (row["state_json"], row["version"])
@@ -40,6 +40,14 @@ class FakeCursor:
             self._row = None if row is None else (row["summary"],)
         elif normalized.startswith("SELECT 1"):
             self._row = None if row is None else (1,)
+        elif normalized.startswith("SELECT STATE_JSON FROM ("):
+            user_id = parameters["user_id"]
+            limit = int(parameters["limit"])
+            self._rows = [
+                (stored["state_json"],)
+                for stored in self._connection.rows.values()
+                if stored["user_id"] == user_id
+            ][:limit]
         elif normalized.startswith("INSERT INTO"):
             if row is not None:
                 raise RuntimeError("ORA-00001 duplicate key")
@@ -70,6 +78,9 @@ class FakeCursor:
 
     def fetchone(self) -> tuple[object, ...] | None:
         return self._row
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        return getattr(self, "_rows", [])
 
     def close(self) -> None:
         self.closed = True
@@ -146,6 +157,22 @@ def test_oracle_memory_updates_existing_state_and_persists_summary() -> None:
     assert updated.version == 3
     assert updated.state.resolution_status is ResolutionStatus.RESOLVED
     assert memory.get_summary(state.conversation_id) == "Customer confirmed the resolution."
+
+
+def test_oracle_memory_lists_only_the_requested_users_states() -> None:
+    connection = FakeOracleConnection()
+    memory = OracleConversationMemory(connection, table_name="CHAT_CONVERSATIONS")
+    first = rich_state("conversation-1")
+    second = rich_state("conversation-2")
+    other = rich_state("conversation-3")
+    other.user_id = "user-b"
+    for state in (first, second, other):
+        memory.save_with_version(state, expected_version=0)
+
+    history = memory.list_for_user("user-a", exclude_conversation_id="conversation-2")
+
+    assert [state.conversation_id for state in history] == ["conversation-1"]
+    assert memory.list_for_user("user-b")[0].conversation_id == "conversation-3"
 
 
 def test_oracle_memory_handles_missing_malformed_and_non_json_state_safely() -> None:

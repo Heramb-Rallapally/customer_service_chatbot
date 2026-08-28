@@ -187,25 +187,29 @@ class ConversationEngine:
 
         state.resolution_status = ResolutionStatus.READY_TO_RESOLVE
         query, filters = self._query_builder.build(state, user_message)
-        try:
-            results = list(
-                self._retriever.search(
-                    query=query,
-                    filters=filters,
-                    top_k=self._options.top_k,
+        proactive_results = self._proactive_retrieval_results(user_message, state)
+        if proactive_results is None:
+            try:
+                results = list(
+                    self._retriever.search(
+                        query=query,
+                        filters=filters,
+                        top_k=self._options.top_k,
+                    )
                 )
-            )
-        except Exception:
-            logger.exception(
-                "Conversation retrieval failed",
-                extra={"conversation_id": conversation_id},
-            )
-            return self._knowledge_fallback(
-                state,
-                proactive.recommended_articles,
-                "The support knowledge service is temporarily unavailable.",
-                expected_memory_version=expected_memory_version,
-            )
+            except Exception:
+                logger.exception(
+                    "Conversation retrieval failed",
+                    extra={"conversation_id": conversation_id},
+                )
+                return self._knowledge_fallback(
+                    state,
+                    proactive.recommended_articles,
+                    "The support knowledge service is temporarily unavailable.",
+                    expected_memory_version=expected_memory_version,
+                )
+        else:
+            results = proactive_results
 
         retrieval_confidence = self._retrieval_confidence(results)
         if not results:
@@ -312,6 +316,28 @@ class ConversationEngine:
                 extra={"conversation_id": state.conversation_id},
             )
             return ProactiveAnalysis()
+
+    def _proactive_retrieval_results(
+        self, message: str, state: ConversationState
+    ) -> Optional[list[RetrievalResult]]:
+        """Reuse optional proactive retrieval evidence without changing its port."""
+
+        if self._proactive_service is None:
+            return None
+        getter = getattr(self._proactive_service, "retrieval_results", None)
+        if not callable(getter):
+            return None
+        try:
+            results = getter(message, state.model_copy(deep=True), top_k=self._options.top_k)
+        except Exception:
+            logger.warning(
+                "Proactive retrieval evidence unavailable",
+                extra={"conversation_id": state.conversation_id},
+            )
+            return None
+        if results is None:
+            return None
+        return [result for result in results if isinstance(result, RetrievalResult)]
 
     def _escalation_decision(
         self,

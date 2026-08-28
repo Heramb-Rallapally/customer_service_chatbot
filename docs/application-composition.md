@@ -13,7 +13,9 @@ Settings
   │                                  ↓
   │                           RetrievalService
   ├─ OCI Cohere LLM ──────────────────────────────┐
-  └─ local ProactiveSupportService + memory ───────┤
+  └─ ProactiveSupportService ───────────────────────┤
+       ├─ RetrievalEvidenceProvider ── RetrievalService
+       └─ ConversationMemoryHistoryProvider ── memory
                                                    ↓
                                             ConversationEngine
 ```
@@ -35,5 +37,13 @@ container. An injected connection remains caller-owned. The default
 `InMemoryConversationMemory` is thread-safe but process-local, so it is only
 appropriate for local development or a single application process.
 
-Tests may inject `retrieval_service`, `llm_service`, memory, and proactive
-services. Fully injected tests make no OCI or Oracle connection.
+The default proactive graph uses the existing `RetrievalService` for
+evidence-backed recommendations and unsupported-issue assessment, and the
+configured conversation memory for user-isolated history. Its default sentiment
+analyzer is deterministic and local. Hosts may inject `OciSentimentAnalyzer`
+with a reviewed OCI-backed callable through `proactive_sentiment_analyzer`; the
+proactive package does not create a second OCI client at import time.
+
+Tests may inject `retrieval_service`, `llm_service`, memory, proactive
+services, or individual proactive providers. Fully injected tests make no OCI
+or Oracle connection.

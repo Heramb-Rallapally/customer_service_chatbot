@@ -123,6 +123,36 @@ class OracleConversationMemory:
         except (TypeError, ValueError) as exc:
             raise ConversationPersistenceError("Stored conversation summary is invalid") from exc
 
+    def list_for_user(
+        self,
+        user_id: str,
+        *,
+        exclude_conversation_id: Optional[str] = None,
+        limit: int = 5,
+    ) -> list[ConversationState]:
+        """Load a bounded set of states owned by one authenticated user only."""
+
+        if limit < 1:
+            return []
+        statement = (
+            "SELECT state_json FROM ("
+            f"SELECT state_json FROM {self._table_name} WHERE user_id = :user_id "
+            "ORDER BY updated_at DESC) WHERE ROWNUM <= :limit"
+        )
+        rows = self._fetch_all(statement, {"user_id": user_id, "limit": limit})
+        states: list[ConversationState] = []
+        try:
+            for row in rows:
+                state = ConversationState.model_validate_json(self._clob_to_text(row[0]))
+                if (
+                    state.user_id == user_id
+                    and state.conversation_id != exclude_conversation_id
+                ):
+                    states.append(state)
+        except (IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise ConversationPersistenceError("Stored conversation state is invalid") from exc
+        return states[:limit]
+
     def set_summary(self, conversation_id: str, summary: Optional[str]) -> None:
         """Persist a future bounded summary and invalidate stale state writers."""
 
@@ -212,6 +242,17 @@ class OracleConversationMemory:
             return cursor.fetchone()
         except ConversationPersistenceError:
             raise
+        except Exception as exc:
+            raise ConversationPersistenceError("Conversation persistence operation failed") from exc
+        finally:
+            self._close_cursor(cursor)
+
+    def _fetch_all(self, statement: str, parameters: dict[str, Any]) -> list[Any]:
+        cursor = None
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute(statement, parameters)
+            return list(cursor.fetchall())
         except Exception as exc:
             raise ConversationPersistenceError("Conversation persistence operation failed") from exc
         finally:

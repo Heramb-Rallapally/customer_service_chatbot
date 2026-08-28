@@ -57,6 +57,24 @@ class InMemoryConversationMemory:
         with self._lock:
             return self._summaries.get(conversation_id)
 
+    def list_for_user(
+        self,
+        user_id: str,
+        *,
+        exclude_conversation_id: Optional[str] = None,
+        limit: int = 5,
+    ) -> list[ConversationState]:
+        """Return copies of only this user's process-local conversations."""
+
+        if limit < 1:
+            return []
+        with self._lock:
+            return [
+                state.model_copy(deep=True)
+                for state in self._states.values()
+                if state.user_id == user_id and state.conversation_id != exclude_conversation_id
+            ][:limit]
+
     def set_summary(self, conversation_id: str, summary: Optional[str]) -> None:
         """Store a summary without coupling the engine to a summarizer."""
 

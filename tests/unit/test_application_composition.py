@@ -14,7 +14,11 @@ from src.app import (
 from src.config import Settings
 from src.conversation import GeneratedResponse, InMemoryConversationMemory, OracleConversationMemory
 from src.llm import OciCohereLLMService
-from src.proactive import ProactiveSupportService
+from src.proactive import (
+    ConversationMemoryHistoryProvider,
+    ProactiveSupportService,
+    RetrievalEvidenceProvider,
+)
 from src.retrieval import OCIEmbeddingService, OracleVSVectorStore, RetrievalService
 from src.ingestion import KnowledgeIndexer
 
@@ -104,6 +108,51 @@ def test_fully_injected_services_skip_external_initialization(monkeypatch: pytes
     assert services.conversation_engine._memory is memory
 
 
+def test_individual_proactive_providers_are_injectable_without_external_setup() -> None:
+    class FixedSentiment:
+        def analyze(self, _message: str):
+            from src.models import Sentiment
+
+            return Sentiment.NEUTRAL
+
+    class Provider:
+        def related_articles(self, *_args: object):
+            return ()
+
+        def similar_issues(self, *_args: object):
+            return ()
+
+        def is_unsupported(self, *_args: object) -> bool:
+            return False
+
+    class History:
+        def historical_solutions(self, *_args: object):
+            return ()
+
+        def customer_history(self, *_args: object):
+            return ()
+
+    recommendation = Provider()
+    history = History()
+    sentiment = FixedSentiment()
+    services = create_application(
+        settings=Settings(),
+        retrieval_service=FakeRetriever(),
+        llm_service=FakeLLM(),
+        proactive_sentiment_analyzer=sentiment,
+        proactive_recommendation_provider=recommendation,
+        proactive_history_provider=history,
+        proactive_unsupported_issue_detector=recommendation,
+    )
+
+    proactive = services.proactive_service
+    assert isinstance(proactive, ProactiveSupportService)
+    assert proactive._sentiment_analyzer is sentiment
+    assert proactive._recommendation_provider is recommendation
+    assert proactive._history_provider is history
+    assert proactive._unsupported_issue_detector is recommendation
+
+
 def test_production_factory_builds_expected_concrete_graph(monkeypatch: pytest.MonkeyPatch) -> None:
     import src.app.bootstrap as bootstrap
 
@@ -140,6 +189,9 @@ def test_production_factory_builds_expected_concrete_graph(monkeypatch: pytest.M
     assert services.llm_service is llm
     assert isinstance(services.llm_service, OciCohereLLMService)
     assert isinstance(services.proactive_service, ProactiveSupportService)
+    assert isinstance(services.proactive_service._recommendation_provider, RetrievalEvidenceProvider)
+    assert isinstance(services.proactive_service._history_provider, ConversationMemoryHistoryProvider)
+    assert services.proactive_service._unsupported_issue_detector is services.proactive_service._recommendation_provider
     assert isinstance(services.memory, InMemoryConversationMemory)
     assert isinstance(services.knowledge_indexer, KnowledgeIndexer)
     assert services.conversation_engine._retriever is services.retrieval_service

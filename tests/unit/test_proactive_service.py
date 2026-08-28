@@ -139,4 +139,6 @@ def test_provider_failure_is_safe_and_does_not_create_recommendations() -> None:
 
 def test_oci_adapter_is_mockable_and_requires_no_credentials() -> None:
     assert OciSentimentAnalyzer(lambda message: {"sentiment": "negative"}).analyze("help") is Sentiment.NEGATIVE
+    assert OciSentimentAnalyzer(lambda message: {"sentiment": " neutral "}).analyze("help") is Sentiment.NEUTRAL
+    assert OciSentimentAnalyzer(lambda message: {"sentiment": "invalid"}).analyze("help") is Sentiment.UNKNOWN
     assert OciSentimentAnalyzer(lambda message: (_ for _ in ()).throw(RuntimeError())).analyze("help") is Sentiment.UNKNOWN

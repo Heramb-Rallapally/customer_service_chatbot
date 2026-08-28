@@ -14,6 +14,7 @@ from typing import Any
 
 from src.models.conversation import ConversationState
 from src.models.proactive import ArticleReference, ProactiveAnalysis, Sentiment
+from src.models.retrieval import RetrievalResult
 
 from .escalation import escalation_reason
 from .interfaces import (
@@ -69,11 +70,33 @@ class ProactiveSupportService:
             recommended_articles=self._recommendations(message, conversation),
         )
 
+    def retrieval_results(
+        self,
+        message: str,
+        conversation: ConversationState | None,
+        *,
+        top_k: int,
+    ) -> list[RetrievalResult] | None:
+        """Expose optional cached provider evidence to the Conversation Engine."""
+
+        provider = self._recommendation_provider
+        method = getattr(provider, "retrieval_results", None)
+        if not callable(method):
+            return None
+        try:
+            results = method(message, conversation, top_k=top_k)
+        except Exception:
+            _LOGGER.warning("Proactive retrieval evidence is unavailable.")
+            return None
+        if results is None:
+            return None
+        return [result for result in results if isinstance(result, RetrievalResult)]
+
     def _safe_sentiment(self, message: str) -> Sentiment:
         try:
             result = self._sentiment_analyzer.analyze(message)
-            return result if isinstance(result, Sentiment) else Sentiment(str(result).upper())
-        except (Exception, ValueError):
+            return result if isinstance(result, Sentiment) else Sentiment(str(result).strip().upper())
+        except Exception:
             _LOGGER.warning("Proactive sentiment provider unavailable; using UNKNOWN sentiment.")
             return Sentiment.UNKNOWN
 

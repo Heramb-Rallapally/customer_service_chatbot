@@ -78,6 +78,15 @@ class ConversationMemory(Protocol):
     def get_summary(self, conversation_id: str) -> Optional[str]:
         """Return an optional bounded summary of older conversation context."""
 
+    def list_for_user(
+        self,
+        user_id: str,
+        *,
+        exclude_conversation_id: Optional[str] = None,
+        limit: int = 5,
+    ) -> Sequence[ConversationState]:
+        """Return only states owned by ``user_id`` for history providers."""
+
 
 @dataclass(frozen=True)
 class ConversationSnapshot:

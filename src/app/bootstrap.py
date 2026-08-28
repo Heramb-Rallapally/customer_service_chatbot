@@ -21,7 +21,17 @@ from src.conversation import (
 from src.conversation.interfaces import LLMService, ProactiveService, Retriever
 from src.ingestion import DocumentIndexer, KnowledgeIndexer
 from src.llm import OciCohereLLMService
-from src.proactive import ProactiveSupportService
+from src.proactive import (
+    ConversationMemoryHistoryProvider,
+    ProactiveSupportService,
+    RetrievalEvidenceProvider,
+)
+from src.proactive.interfaces import (
+    HistoryProvider,
+    RecommendationProvider,
+    SentimentAnalyzer,
+    UnsupportedIssueDetector,
+)
 from src.retrieval import (
     OCIEmbeddingService,
     OracleVSVectorStore,
@@ -94,6 +104,10 @@ def create_application(
     oracle_backend: Any = None,
     retrieval_service: Optional[Retriever] = None,
     proactive_service: Optional[ProactiveService] = None,
+    proactive_sentiment_analyzer: Optional[SentimentAnalyzer] = None,
+    proactive_recommendation_provider: Optional[RecommendationProvider] = None,
+    proactive_history_provider: Optional[HistoryProvider] = None,
+    proactive_unsupported_issue_detector: Optional[UnsupportedIssueDetector] = None,
     memory: Optional[ConversationMemory] = None,
     llm_service: Optional[LLMService] = None,
 ) -> ApplicationServices:
@@ -152,7 +166,6 @@ def create_application(
             resolved_retrieval = retrieval_service
 
         resolved_llm = llm_service or OciCohereLLMService.from_settings(configured_settings)
-        resolved_proactive = proactive_service or ProactiveSupportService()
         resolved_memory = memory or (
             OracleConversationMemory(
                 connection,
@@ -161,6 +174,29 @@ def create_application(
             if use_durable_memory
             else InMemoryConversationMemory()
         )
+        if proactive_service is not None:
+            resolved_proactive = proactive_service
+        else:
+            evidence_provider = (
+                proactive_recommendation_provider
+                or RetrievalEvidenceProvider(resolved_retrieval)
+            )
+            unsupported_detector = proactive_unsupported_issue_detector
+            if unsupported_detector is None and callable(
+                getattr(evidence_provider, "is_unsupported", None)
+            ):
+                unsupported_detector = evidence_provider
+            resolved_proactive = ProactiveSupportService(
+                sentiment_analyzer=proactive_sentiment_analyzer,
+                recommendation_provider=evidence_provider,
+                history_provider=(
+                    proactive_history_provider
+                    or ConversationMemoryHistoryProvider(resolved_memory)
+                ),
+                unsupported_issue_detector=(
+                    unsupported_detector or RetrievalEvidenceProvider(resolved_retrieval)
+                ),
+            )
         if not isinstance(resolved_retrieval, DocumentIndexer):
             raise ApplicationInitializationError(
                 "Configured retrieval service does not support document indexing"
