@@ -7,6 +7,13 @@ __pycache__/
 .coverage
 htmlcov/
 .DS_Store
+*.swp
+*~
+.idea/
+.vscode/
 
-# Local implementation review; intentionally retained for engineering handoff, not versioned product documentation.
+# Generated local data; preserve source corpus and fixtures under data/raw and examples.
+data/processed/
+
+# Local review notes are never versioned product documentation.
 review.md

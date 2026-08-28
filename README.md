@@ -1,170 +1,223 @@
-# Customer Service Chatbot
+# Customer Service RAG Chatbot
 
-A team capstone project for a retrieval-augmented customer support assistant with multi-turn resolution. This repository currently contains only the shared project foundation: data contracts, environment configuration, package boundaries, and contract tests.
+A local-first customer-support assistant that answers questions from indexed
+product documentation. It combines Ollama models with Oracle Database 23ai and
+OracleVS, retains conversation context, and returns grounded responses with
+citations to the retrieved knowledge.
 
-## Setup
+## How it works
 
-Python 3.9 or newer is supported.
+```mermaid
+flowchart TD
+    U[User] --> UI[Streamlit UI]
+    UI --> API[FastAPI]
+    API --> CE[ConversationEngine]
+    CE --> R[RetrievalService]
+    R --> E[Ollama: nomic-embed-text]
+    E --> O[Oracle Database 23ai / OracleVS]
+    O --> R
+    R --> CE
+    CE --> L[Ollama: llama3.2:3b]
+    L --> CE
+    CE --> API
+    API --> UI
+```
+
+The local default uses:
+
+- Generation: `llama3.2:3b` through Ollama.
+- Embeddings: `nomic-embed-text` through Ollama (`768` dimensions).
+- Vector store: Oracle Database 23ai / LangChain OracleVS with COSINE search.
+- API: FastAPI; UI: Streamlit.
+
+OCI generation and embedding adapters remain available as an optional provider
+selection, but Ollama is the default.
+
+## Repository layout
+
+```text
+src/
+  api/           FastAPI routes, identity boundary, and application service
+  app/           Lazy composition root
+  conversation/  Multi-turn orchestration and memory adapters
+  ingestion/     File loading, cleaning, metadata, chunking, and indexing bridge
+  llm/           Grounded Ollama and optional OCI LLM adapters
+  ollama/        Local Ollama HTTP client and health check
+  proactive/     Sentiment, evidence, history, and escalation signals
+  retrieval/     Embeddings, OracleVS adapter, filtering, and score conversion
+  ui/            Streamlit presentation and HTTP client
+  models/        Shared Pydantic contracts
+docs/            Developer documentation
+data/raw/        Source knowledge documents
+scripts/         Manual database provisioning scripts
+tests/           Unit, integration, and evaluation tests
+```
+
+## Quick start
+
+Detailed instructions are in [docs/setup.md](docs/setup.md). From a clean
+checkout:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-```
 
-Real credentials are not required to import the project or run its contract tests. `.env.example` documents environment variable names for local Ollama and Oracle integrations; no `.env` file is loaded automatically.
-
-For local model inference, install and start Ollama, then pull the configured
-models:
-
-```bash
+# In a separate terminal, if Ollama is not already running:
+# ollama serve
 ollama pull llama3.2:3b
 ollama pull nomic-embed-text
+
+cp .env.example .env
+# Edit .env with your Oracle credentials and table names.
+set -a
+source .env
+set +a
+
 python -m src.ollama.health
 ```
 
-The default provider configuration is `LLM_PROVIDER=ollama` and
-`EMBEDDING_PROVIDER=ollama`, using Ollama's local API at
-`http://127.0.0.1:11434`. See [local Ollama setup](docs/ollama-local.md) before
-creating or reusing an OracleVS table.
+`.env` is local-only and is deliberately **not** loaded by the application.
+Never commit it. Run commands from the repository root; if Python cannot find
+`src`, run `export PYTHONPATH="$PWD"` first.
 
-Run the test suite with:
+Oracle Database 23ai is required for live indexing and chat. Configure the
+database variables in `.env`, provision the durable-memory table if wanted,
+and use a vector table compatible with `VECTOR(768, FLOAT32)`. See
+[Oracle 23ai](docs/oracle-23ai.md).
+
+## Index knowledge
+
+Knowledge is not indexed automatically at application startup. The supported
+entry point is `KnowledgeIndexer.ingest_file_and_index`, obtained from the
+application composition root. For the supplied text corpus:
 
 ```bash
-python -m pytest
+set -a
+source .env
+set +a
+
+python - <<'PY'
+from pathlib import Path
+
+from src.app import create_application
+
+paths = sorted(Path("data/raw/official_docs").glob("*.txt"))
+with create_application() as application:
+    total = 0
+    for path in paths:
+        documents = application.knowledge_indexer.ingest_file_and_index(path)
+        total += len(documents)
+        print(f"{path}: {len(documents)} chunks")
+print(f"Indexed {total} chunks from {len(paths)} source files.")
+PY
 ```
 
-## Retrieval module
+Indexing is insert-only. Re-indexing the same deterministic document IDs can
+raise a duplicate-key error; use a deliberately reset or new vector table when
+rebuilding a corpus. More details: [ingestion](docs/ingestion.md).
 
-`src/retrieval/` exposes a mock-friendly `RetrievalService`, metadata filters,
-and deterministic in-memory implementations for local development. Its public
-conversation-facing API is
-`search(*, query: str, filters: Mapping[str, str], top_k: int)`. It supports
-COSINE, EUCLIDEAN, and DOT vector metrics; all returned scores are normalized
-to `[0, 1]`, where higher is better. Production
-integration uses the configured `OllamaEmbeddingService` (or retained
-`OCIEmbeddingService`) and an injected LangChain OracleVS
-instance through `OracleVSVectorStore`; database connection and schema setup
-remain owned by the database module. Local Ollama uses `nomic-embed-text` with
-768-dimensional vectors. Retrieval evaluation provides
-Recall@K and MRR against explicit query-to-document relevance labels.
+## Run the application
 
-Oracle production integration is pinned to `langchain-community==0.3.31`,
-`langchain==0.3.30`, `langchain-core==0.3.86`, and `oracledb==3.4.2`.
-`OracleVSVectorStore` uses that release's `add_texts` and
-`similarity_search_by_vector_with_relevance_scores` APIs. The latter returns
-Oracle `vector_distance` values (lower is better), despite its method name.
-The adapter converts them to bounded, higher-is-better relevance scores before
-they reach the conversation layer. See `docs/oraclevs-integration.md` for the
-metric, filter, and live-integration-test assumptions.
-
-## Repository layout and ownership
-
-- `src/models/`: shared, dependency-light Pydantic contracts used by all modules.
-- `src/config.py`: centralized environment configuration without service-client initialization.
-- `src/ingestion/` and `src/db/`: Member 1, knowledge ingestion and database access.
-- `src/retrieval/`: Member 2, retrieval and RAG infrastructure.
-- `src/conversation/`: Member 3, conversation orchestration.
-- `src/proactive/`: Member 4, proactive support signals.
-- `src/api/` and `src/ui/`: Member 5, API, UI, analytics, and integration.
-- `tests/`: unit, integration, and evaluation tests.
-- `data/`: raw, processed, and sample data locations.
-
-See `AGENTS.md` for the authoritative architecture, integration, security, and team workflow rules.
-
-## Run the API and UI
-
-Install dependencies, start Ollama, and configure the Oracle values in your environment, then
-start the API from the repository root:
+Start FastAPI after loading the environment:
 
 ```bash
 uvicorn src.api.app:app --reload
 ```
 
-The API exposes `GET /health` for process health and `POST /chat` using the
-existing `ChatRequest` and `ChatResponse` models. Ollama/Oracle clients are
-created lazily on the first chat request through `src.app.create_application()`;
-importing the API or calling `/health` does not require infrastructure.
+`GET /health` reports process liveness without contacting Ollama or Oracle.
+The production dependency graph is created lazily on the first `POST /chat`.
 
-Start Streamlit in a second terminal:
+For a quick API check in development identity mode:
+
+```bash
+curl -i http://127.0.0.1:8000/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"conversation_id":"local-demo-1","user_message":"What does this service support?"}'
+```
+
+The response body is the shared `ChatResponse`; the resolution state is exposed
+in the `X-Resolution-Status` response header.
+
+In a second terminal, load the same `.env` and start Streamlit:
 
 ```bash
 streamlit run src/ui/app.py
 ```
 
-The UI communicates only through FastAPI using `HttpChatApiClient`. Set
-`API_BASE_URL` when the API is not at `http://127.0.0.1:8000`. Real chat
-requires the configured Ollama models and Oracle AI Database access. The
-credential-free suite does not exercise Oracle; the Ollama/Oracle live test is
-explicitly opt-in.
+Streamlit calls FastAPI through `HttpChatApiClient`; it does not connect to
+Oracle or Ollama directly. By default it calls `http://127.0.0.1:8000`; change
+`API_BASE_URL` for another API address.
 
-## Analytics and feedback
+Ask a specific question such as:
 
-Analytics observes completed support outcomes; it does not control retrieval,
-conversation, or generation. The API records typed `SupportEvent` metadata
-(resolution/escalation state, confidence, timing, citation/action counts and
-optional feedback) without storing raw chat text. `POST /feedback` accepts
-`conversation_id`, a `positive` or `negative` rating, and an optional comment.
-Its user identity always comes from `AuthenticatedIdentity`; feedback for a
-different user's conversation receives the same safe 403 ownership response as
-chat.
+> What is Oracle AI Database at AWS and which AWS regions are supported?
 
-`ANALYTICS_MODE=noop` is the default. Set `ANALYTICS_MODE=memory` for a local,
-single-process demo to enable the Streamlit **Your support activity** view via
-the API's authenticated, user-scoped `GET /analytics/events` endpoint. This
-in-memory sink is not durable and is not a production analytics store. Event
-metadata can be transformed into offline Step 8 evaluation records, but Step 7
-does not retrain models or change prompts automatically.
+The engine retrieves OracleVS evidence, asks the LLM for a grounded answer,
+and attaches citations only for retrieved documents. If the indexed knowledge
+does not contain a requested fact, the assistant says so instead of guessing.
 
-## API identity and conversation ownership
+## Conversation and retrieval behavior
 
-`POST /chat` now derives its effective `user_id` from an injected
-`AuthenticatedIdentity`, not from `ChatRequest.user_id`. The request field is
-retained for compatibility only: if supplied, it must match the authenticated
-identity or the API returns a safe 403 response. It cannot impersonate another
-user.
+The conversation engine retains prior turns, structured product/version/issue
+context, troubleshooting attempts, resolution state, and ownership. It does
+not require product, version, and issue type for every request:
 
-For local demos, `API_AUTH_MODE=development` uses the server-side
-`API_DEVELOPMENT_USER_ID` value (default: `local-demo-user`). The UI/client may
-omit `user_id`; it is not authentication and does not establish identity.
+- A self-contained information question proceeds directly to retrieval.
+- An underspecified request such as “How do I fix this?” can ask a targeted
+  clarification question.
+- Empty, low-confidence, unavailable, or unsupported knowledge produces a
+  safe fallback or escalation rather than fabricated guidance.
 
-For production, set `API_AUTH_MODE=required` and inject authentication
-middleware that verifies the deployment's trusted session/token mechanism and
-sets `request.state.authenticated_identity` to `AuthenticatedIdentity`. Without
-that middleware the API returns 401. Conversation ownership then ensures the
-authenticated user cannot continue another user's conversation.
+Retrieval embeds the query, performs COSINE vector search, normalizes Oracle
+distance to a `[0, 1]` higher-is-better score, applies metadata filters, and
+returns `RetrievalResult` objects. The engine—not the LLM—builds citations from
+those results. See [conversation](docs/conversation.md) and
+[retrieval](docs/retrieval.md).
 
-## Conversation memory
-
-`InMemoryConversationMemory` is process-local and intended only for tests and
-local development. Configure `ORACLE_CONVERSATION_TABLE` after provisioning the
-documented Oracle schema to select durable, optimistic-concurrency memory in
-the application composition root. See [conversation memory documentation](docs/conversation-memory.md).
-
-## Proactive providers
-
-The application composition root wires retrieval-backed proactive
-recommendations, evidence-based unsupported-issue detection, and
-user-isolated conversation history. See [proactive provider documentation](docs/proactive-providers.md)
-for dependency, graceful-degradation, and OCI sentiment-injection details.
-
-## End-to-end evaluation
-
-Step 8 provides a labelled JSON dataset contract, a dependency-injected runner,
-deterministic outcome/retrieval metrics, human-readable reporting, and a JSON
-CLI output:
+## Test and validate
 
 ```bash
-python -m src.evaluation.run \
-  --dataset examples/evaluation/cases.json \
-  --output examples/evaluation/results.json
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider
+PYTHONPYCACHEPREFIX=/tmp/customer_service_chatbot_compile_cache \
+  .venv/bin/python -m compileall -q src tests
+.venv/bin/python -m pip check
+git diff --check
 ```
 
-The CLI exercises the configured composition root and therefore requires the
-selected model provider and live Oracle configuration. Credential-free integration tests use deterministic
-providers through the same public contracts and real `ConversationEngine` and
-`ChatApplicationService` path. Evaluation never performs a second retrieval
-for telemetry, stores no raw chat or generated response in reports, and does
-not retrain models, modify prompts, or change production behavior. See
-[evaluation documentation](docs/evaluation.md) for the dataset, metrics,
-local-injection example, and live-infrastructure requirements.
+Unit tests are credential-free. Live Oracle/Ollama tests are opt-in; see
+[testing](docs/testing.md).
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Setup](docs/setup.md)
+- [Configuration](docs/configuration.md)
+- [Ollama](docs/ollama.md)
+- [Oracle Database 23ai and OracleVS](docs/oracle-23ai.md)
+- [Ingestion and indexing](docs/ingestion.md)
+- [Retrieval](docs/retrieval.md)
+- [Conversation and memory](docs/conversation.md)
+- [Testing](docs/testing.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Evaluation](docs/evaluation.md)
+
+## Known limitations
+
+- Live chat requires a running Ollama instance, the two configured models, and
+  reachable Oracle Database 23ai.
+- The vector table must be intentionally rebuilt when embedding models change;
+  equal dimensions do not make embedding spaces compatible.
+- `ANALYTICS_MODE=memory` and in-memory conversation memory are process-local.
+- Development identity is not production authentication. Production must set
+  `API_AUTH_MODE=required` and install trusted authentication middleware.
+- Evaluation collects results; it does not retrain models, alter prompts, or
+  modify production knowledge automatically.
+
+## Extending safely
+
+Use the shared Pydantic models and narrow interfaces between modules. Inject
+test doubles through `src.app.create_application()` rather than adding direct
+Oracle/Ollama calls to API routes or Streamlit. Preserve the `Retriever`,
+`LLMService`, `ConversationMemory`, and proactive-provider boundaries when
+adding a provider or storage implementation.

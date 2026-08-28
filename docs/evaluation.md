@@ -1,9 +1,9 @@
-# End-to-end evaluation
+# Evaluation
 
-Step 8 evaluates the existing support pipeline without changing production
-conversation behavior. The runner submits each labelled case through
+The evaluation tooling evaluates the existing support pipeline without changing
+production conversation behavior. The runner submits each labelled case through
 `ChatApplicationService`, reads the state persisted by `ConversationEngine`,
-consumes Step 7 `SupportEvent` metadata, and can observe the retriever through a
+consumes `SupportEvent` metadata, and can observe the retriever through a
 transparent `RecordingRetriever` wrapper.
 
 ```text
@@ -109,7 +109,7 @@ outcomes and failure reason codes.
 
 Rates use only values that are actually available. Missing confidence, timing,
 state, analytics, or retrieval observations remain `null`/`unavailable`; they
-are not converted into zero. Response time is the final evaluated turn's Step 7
+are not converted into zero. Response time is the final evaluated turn's
 chat-operation timing. Retrieval score is the highest observed score across
 the case's real retrieval calls.
 
