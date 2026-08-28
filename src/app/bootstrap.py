@@ -14,6 +14,7 @@ from typing import Any, Optional
 from src.config import Settings, get_settings
 from src.conversation import ConversationEngine, ConversationMemory, InMemoryConversationMemory
 from src.conversation.interfaces import LLMService, ProactiveService, Retriever
+from src.ingestion import DocumentIndexer, KnowledgeIndexer
 from src.llm import OciCohereLLMService
 from src.proactive import ProactiveSupportService
 from src.retrieval import (
@@ -50,6 +51,7 @@ class ApplicationServices:
     llm_service: LLMService
     proactive_service: ProactiveService
     memory: ConversationMemory
+    knowledge_indexer: KnowledgeIndexer
     oracle_connection: Any = None
     _owns_oracle_connection: bool = field(default=False, repr=False)
     _closed: bool = field(default=False, init=False, repr=False)
@@ -137,6 +139,11 @@ def create_application(
         resolved_llm = llm_service or OciCohereLLMService.from_settings(configured_settings)
         resolved_proactive = proactive_service or ProactiveSupportService()
         resolved_memory = memory or InMemoryConversationMemory()
+        if not isinstance(resolved_retrieval, DocumentIndexer):
+            raise ApplicationInitializationError(
+                "Configured retrieval service does not support document indexing"
+            )
+        knowledge_indexer = KnowledgeIndexer(resolved_retrieval)
         engine = ConversationEngine(
             retriever=resolved_retrieval,
             llm_service=resolved_llm,
@@ -157,6 +164,7 @@ def create_application(
         llm_service=resolved_llm,
         proactive_service=resolved_proactive,
         memory=resolved_memory,
+        knowledge_indexer=knowledge_indexer,
         oracle_connection=connection,
         _owns_oracle_connection=owns_connection,
     )

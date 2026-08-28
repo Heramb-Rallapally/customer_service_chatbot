@@ -16,9 +16,13 @@ from src.conversation import GeneratedResponse, InMemoryConversationMemory
 from src.llm import OciCohereLLMService
 from src.proactive import ProactiveSupportService
 from src.retrieval import OCIEmbeddingService, OracleVSVectorStore, RetrievalService
+from src.ingestion import KnowledgeIndexer
 
 
 class FakeRetriever:
+    def index_documents(self, _documents: object) -> None:
+        pass
+
     def search(self, *, query: str, filters: dict[str, str], top_k: int) -> list[object]:
         return []
 
@@ -137,6 +141,7 @@ def test_production_factory_builds_expected_concrete_graph(monkeypatch: pytest.M
     assert isinstance(services.llm_service, OciCohereLLMService)
     assert isinstance(services.proactive_service, ProactiveSupportService)
     assert isinstance(services.memory, InMemoryConversationMemory)
+    assert isinstance(services.knowledge_indexer, KnowledgeIndexer)
     assert services.conversation_engine._retriever is services.retrieval_service
     assert services.conversation_engine._llm_service is llm
     assert services.conversation_engine._proactive_service is services.proactive_service
@@ -206,3 +211,18 @@ def test_injected_oraclevs_backend_needs_no_database_configuration() -> None:
 
     assert isinstance(services.retrieval_service, RetrievalService)
     assert services.oracle_connection is None
+
+
+def test_injected_search_only_retriever_is_rejected_for_indexing() -> None:
+    class SearchOnlyRetriever:
+        def search(self, *, query: str, filters: dict[str, str], top_k: int) -> list[object]:
+            return []
+
+    import src.app.bootstrap as bootstrap
+
+    with pytest.raises(bootstrap.ApplicationInitializationError, match="document indexing"):
+        create_application(
+            settings=Settings(),
+            retrieval_service=SearchOnlyRetriever(),
+            llm_service=FakeLLM(),
+        )

@@ -9,6 +9,7 @@ ordered from lowest to highest.
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Iterable, Sequence
 from typing import Any, Optional
@@ -75,27 +76,61 @@ class OracleVSVectorStore:
             raise VectorStoreError("documents and embeddings must have the same length")
         if not documents:
             return
-        duplicate_ids = _duplicates(document.id for document in documents)
-        if duplicate_ids:
-            raise VectorStoreError("duplicate document IDs in batch: " + ", ".join(duplicate_ids))
+        self._validate_document_ids(documents)
         for embedding in embeddings:
             self._validate_embedding(embedding, label="document")
+        self._add_texts(documents)
+
+    def index_documents(self, documents: Sequence[KnowledgeDocument]) -> None:
+        """Index through OracleVS's native text API with one embedding pass.
+
+        ``langchain-community==0.3.31`` has no API for supplied document
+        vectors. Its supported ``add_texts`` method embeds with the configured
+        ``OCIEmbeddingService`` and stores those exact vectors. The OCI adapter
+        continues to validate configured dimensions and finite values.
+        """
+
+        if not documents:
+            return
+        self._validate_document_ids(documents)
+        self._add_texts(documents)
+
+    def _add_texts(self, documents: Sequence[KnowledgeDocument]) -> None:
         method = getattr(self._backend, "add_texts", None)
         if method is None:
             raise VectorStoreError(
                 "OracleVS backend must support add_texts (langchain-community 0.3.31)"
             )
+        metadatas = self._metadata_for_documents(documents)
         try:
             method(
                 texts=[document.content for document in documents],
-                metadatas=[
-                    {**_document_metadata(document), "document_id": document.id}
-                    for document in documents
-                ],
+                metadatas=metadatas,
                 ids=[document.id for document in documents],
             )
         except Exception as exc:
             raise VectorStoreError("OracleVS document insertion failed") from exc
+
+    @staticmethod
+    def _validate_document_ids(documents: Sequence[KnowledgeDocument]) -> None:
+        duplicate_ids = _duplicates(document.id for document in documents)
+        if duplicate_ids:
+            raise VectorStoreError("duplicate document IDs in batch: " + ", ".join(duplicate_ids))
+
+    @staticmethod
+    def _metadata_for_documents(documents: Sequence[KnowledgeDocument]) -> list[dict[str, object]]:
+        metadata = [
+            {**_document_metadata(document), "document_id": document.id}
+            for document in documents
+        ]
+        try:
+            for value in metadata:
+                json.dumps(value, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise VectorStoreError(
+                "OracleVS document metadata must be JSON serializable"
+            ) from exc
+        return metadata
 
     def similarity_search(
         self, query_embedding: Sequence[float], *, k: int, filters: Optional[RetrievalFilters]

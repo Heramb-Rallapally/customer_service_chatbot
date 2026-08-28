@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Protocol, Sequence
+from typing import Optional, Protocol, Sequence, runtime_checkable
 
 from src.models import KnowledgeDocument, RetrievalResult
 
@@ -27,3 +27,10 @@ class VectorStore(Protocol):
     def similarity_search(
         self, query_embedding: Sequence[float], *, k: int, filters: Optional[RetrievalFilters]
     ) -> list[RetrievalResult]: ...
+
+
+@runtime_checkable
+class TextIndexingVectorStore(Protocol):
+    """Optional port for stores that embed text during their native insertion API."""
+
+    def index_documents(self, documents: Sequence[KnowledgeDocument]) -> None: ...

@@ -8,7 +8,7 @@ from typing import Optional
 from src.models import KnowledgeDocument, RetrievalResult
 
 from .filters import RetrievalFilters
-from .interfaces import EmbeddingService, VectorStore
+from .interfaces import EmbeddingService, TextIndexingVectorStore, VectorStore
 
 
 class RetrievalService:
@@ -20,6 +20,12 @@ class RetrievalService:
 
     def index_documents(self, documents: Sequence[KnowledgeDocument]) -> None:
         if not documents:
+            return
+        # Pinned OracleVS embeds inside its supported add_texts API.  Let that
+        # store own the single embedding call instead of calculating vectors
+        # here and then discarding them before OracleVS inserts the document.
+        if isinstance(self._vector_store, TextIndexingVectorStore):
+            self._vector_store.index_documents(documents)
             return
         embeddings = self._embeddings.embed_documents([document.content for document in documents])
         if len(embeddings) != len(documents):

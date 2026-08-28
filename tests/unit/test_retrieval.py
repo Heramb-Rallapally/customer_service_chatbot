@@ -209,6 +209,144 @@ def test_oraclevs_adapter_maps_insert_and_search() -> None:
     assert results[0].score == pytest.approx(0.85)
 
 
+def test_retrieval_uses_one_oci_embedding_batch_for_oraclevs_text_indexing() -> None:
+    class Client:
+        def __init__(self) -> None:
+            self.requests: list[list[str]] = []
+
+        def embed_text(self, request):
+            self.requests.append(request)
+            return SimpleNamespace(data=SimpleNamespace(embeddings=[[0.4, 0.6] for _ in request]))
+
+    class Backend:
+        def __init__(self, embedding_function) -> None:
+            self.embedding_function = embedding_function
+            self.inserted = None
+
+        def add_texts(self, *, texts, metadatas, ids):
+            # This matches the pinned OracleVS add_texts behavior: it owns
+            # document embedding before inserting rows.
+            vectors = self.embedding_function.embed_documents(texts)
+            self.inserted = (texts, metadatas, ids, vectors)
+
+    client = Client()
+    embeddings = OCIEmbeddingService(
+        client,
+        compartment_id="compartment",
+        model_id="model",
+        request_factory=list,
+        embedding_dimension=2,
+    )
+    backend = Backend(embeddings)
+    service = RetrievalService(
+        embeddings,
+        OracleVSVectorStore(backend, embedding_dimension=2),
+    )
+    documents = [
+        KnowledgeDocument(
+            id="vpn-guide",
+            content="VPN connection troubleshooting",
+            source="official-guide",
+            product="Oracle VPN",
+            version="5.2",
+            severity=Severity.MEDIUM,
+            metadata={"authoritative": True},
+        ),
+        KnowledgeDocument(
+            id="mail-guide",
+            content="Reset the mailbox password",
+            source="official-guide",
+            product="Oracle Mail",
+        ),
+    ]
+
+    service.index_documents(documents)
+
+    assert client.requests == [[document.content for document in documents]]
+    assert backend.inserted[2] == ["vpn-guide", "mail-guide"]
+    assert backend.inserted[0] == [document.content for document in documents]
+    assert backend.inserted[1][0]["product"] == "Oracle VPN"
+    assert backend.inserted[1][0]["document_id"] == "vpn-guide"
+    assert backend.inserted[1][0]["authoritative"] is True
+
+
+def test_oraclevs_rejects_non_json_metadata_before_insertion() -> None:
+    class Backend:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def add_texts(self, **_kwargs):
+            self.calls += 1
+
+    backend = Backend()
+    document = KnowledgeDocument(
+        id="invalid-metadata",
+        content="content",
+        source="source",
+        metadata={"unsupported": object()},
+    )
+
+    with pytest.raises(VectorStoreError, match="JSON serializable"):
+        OracleVSVectorStore(backend).index_documents([document])
+
+    assert backend.calls == 0
+
+
+def test_oraclevs_text_indexing_keeps_oci_dimension_validation() -> None:
+    class Client:
+        def embed_text(self, _request):
+            return SimpleNamespace(data=SimpleNamespace(embeddings=[[0.1]]))
+
+    class Backend:
+        def __init__(self, embedding_function) -> None:
+            self.embedding_function = embedding_function
+            self.inserted = False
+
+        def add_texts(self, *, texts, **_kwargs):
+            self.embedding_function.embed_documents(texts)
+            self.inserted = True
+
+    embeddings = OCIEmbeddingService(
+        Client(),
+        compartment_id="compartment",
+        model_id="model",
+        request_factory=list,
+        embedding_dimension=2,
+    )
+    backend = Backend(embeddings)
+    service = RetrievalService(embeddings, OracleVSVectorStore(backend, embedding_dimension=2))
+
+    with pytest.raises(VectorStoreError, match="document insertion failed") as error:
+        service.index_documents(
+            [KnowledgeDocument(id="dimension", content="content", source="source")]
+        )
+
+    assert isinstance(error.value.__cause__, EmbeddingError)
+    assert backend.inserted is False
+
+
+def test_oraclevs_insert_only_reindexing_preserves_duplicate_failure() -> None:
+    duplicate_error = RuntimeError("unique constraint violated")
+
+    class Backend:
+        def __init__(self) -> None:
+            self.ids: set[str] = set()
+
+        def add_texts(self, *, ids, **_kwargs):
+            if any(identifier in self.ids for identifier in ids):
+                raise duplicate_error
+            self.ids.update(ids)
+
+    store = OracleVSVectorStore(Backend())
+    document = KnowledgeDocument(id="stable-id", content="content", source="source")
+    store.index_documents([document])
+
+    with pytest.raises(VectorStoreError, match="document insertion failed") as error:
+        store.index_documents([document])
+
+    assert error.value.__cause__ is duplicate_error
+
+
 def test_oraclevs_progressively_overfetches_before_local_filtering() -> None:
     non_matching = SimpleNamespace(page_content="Mail guide", metadata={"document_id": "mail", "product": "Oracle Mail", "source": "official-guide"})
     matching = SimpleNamespace(page_content="VPN guide", metadata={"document_id": "vpn", "product": "Oracle VPN", "source": "official-guide"})
