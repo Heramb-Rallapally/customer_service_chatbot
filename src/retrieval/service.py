@@ -48,4 +48,8 @@ class RetrievalService:
         relevant results, irrespective of the configured vector metric.
         """
 
-        return self.retrieve(query, k=top_k, filters=RetrievalFilters(**dict(filters)))
+        return self.retrieve(
+            query,
+            k=top_k,
+            filters=RetrievalFilters.from_conversation_mapping(filters),
+        )

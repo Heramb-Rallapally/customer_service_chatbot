@@ -34,10 +34,14 @@ remain owned by the database module. OCI use requires `OCI_COMPARTMENT_ID`,
 `EMBEDDING_MODEL`, and a valid OCI profile. Retrieval evaluation provides
 Recall@K and MRR against explicit query-to-document relevance labels.
 
-When constructing `OracleVSVectorStore`, database integration must explicitly
-set `score_semantics` to match the backend's raw score convention (`DISTANCE`
-or `SIMILARITY`). This prevents backend-specific score direction from leaking
-into the shared retrieval contract.
+Oracle production integration is pinned to `langchain-community==0.3.31`,
+`langchain==0.3.30`, `langchain-core==0.3.86`, and `oracledb==3.4.2`.
+`OracleVSVectorStore` uses that release's `add_texts` and
+`similarity_search_by_vector_with_relevance_scores` APIs. The latter returns
+Oracle `vector_distance` values (lower is better), despite its method name.
+The adapter converts them to bounded, higher-is-better relevance scores before
+they reach the conversation layer. See `docs/oraclevs-integration.md` for the
+metric, filter, and live-integration-test assumptions.
 
 ## Repository layout and ownership
 

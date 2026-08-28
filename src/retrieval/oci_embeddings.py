@@ -2,25 +2,32 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Sequence
 from typing import Any
+
+from langchain_core.embeddings import Embeddings
 
 from src.config import Settings
 
 from .exceptions import EmbeddingError
 
 
-class OCIEmbeddingService:
+class OCIEmbeddingService(Embeddings):
     """Embeds text with OCI Generative AI while keeping OCI optional for tests."""
 
     def __init__(
         self, client: Any, *, compartment_id: str, model_id: str,
         request_factory: Callable[[Sequence[str]], Any],
+        embedding_dimension: int | None = None,
     ) -> None:
         self._client = client
         self._compartment_id = compartment_id
         self._model_id = model_id
         self._request_factory = request_factory
+        if embedding_dimension is not None and embedding_dimension < 1:
+            raise ValueError("embedding_dimension must be positive")
+        self.embedding_dimension = embedding_dimension
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "OCIEmbeddingService":
@@ -49,7 +56,13 @@ class OCIEmbeddingService:
                 inputs=list(texts),
             )
 
-        return cls(client, compartment_id=settings.oci_compartment_id, model_id=settings.embedding_model, request_factory=request_factory)
+        return cls(
+            client,
+            compartment_id=settings.oci_compartment_id,
+            model_id=settings.embedding_model,
+            request_factory=request_factory,
+            embedding_dimension=settings.embedding_dimension,
+        )
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         return self._embed(texts)
@@ -69,4 +82,21 @@ class OCIEmbeddingService:
             raise EmbeddingError("OCI embedding request failed") from exc
         if len(vectors) != len(texts):
             raise EmbeddingError("OCI returned an unexpected number of embeddings")
-        return [list(vector) for vector in vectors]
+        normalised = [list(vector) for vector in vectors]
+        for vector in normalised:
+            if not vector:
+                raise EmbeddingError("OCI returned an empty embedding")
+            try:
+                values_are_finite = all(math.isfinite(float(value)) for value in vector)
+            except (TypeError, ValueError) as exc:
+                raise EmbeddingError("OCI returned a non-numeric embedding value") from exc
+            if not values_are_finite:
+                raise EmbeddingError("OCI returned a non-finite embedding value")
+            if self.embedding_dimension is None:
+                self.embedding_dimension = len(vector)
+            elif len(vector) != self.embedding_dimension:
+                raise EmbeddingError(
+                    "OCI embedding dimension does not match configured/previous dimension "
+                    f"{self.embedding_dimension}"
+                )
+        return normalised

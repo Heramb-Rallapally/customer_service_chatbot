@@ -20,6 +20,7 @@ class Settings(BaseModel):
     oci_compartment_id: Optional[str] = None
     oci_endpoint: Optional[str] = None
     embedding_model: Optional[str] = None
+    embedding_dimension: Optional[int] = None
     llm_model: Optional[str] = None
     oracle_db_user: Optional[str] = None
     oracle_db_password: Optional[SecretStr] = None
@@ -42,6 +43,11 @@ class Settings(BaseModel):
             oci_compartment_id=optional("OCI_COMPARTMENT_ID"),
             oci_endpoint=optional("OCI_ENDPOINT"),
             embedding_model=optional("EMBEDDING_MODEL"),
+            embedding_dimension=(
+                int(values["EMBEDDING_DIMENSION"])
+                if values.get("EMBEDDING_DIMENSION")
+                else None
+            ),
             llm_model=optional("LLM_MODEL"),
             oracle_db_user=optional("ORACLE_DB_USER"),
             oracle_db_password=optional("ORACLE_DB_PASSWORD"),

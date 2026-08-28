@@ -29,6 +29,7 @@ def normalized_similarity(raw_score: float, metric: SimilarityMetric) -> float:
     the caller before reaching this helper.
     """
 
+    _require_finite(raw_score)
     if metric is SimilarityMetric.COSINE:
         return _clamp((raw_score + 1.0) / 2.0)
     if metric is SimilarityMetric.DOT:
@@ -39,6 +40,7 @@ def normalized_similarity(raw_score: float, metric: SimilarityMetric) -> float:
 def normalized_distance(raw_distance: float, metric: SimilarityMetric) -> float:
     """Convert an Oracle vector distance to a `[0, 1]` similarity score."""
 
+    _require_finite(raw_distance)
     if metric is SimilarityMetric.COSINE:
         # Oracle cosine distance spans [0, 2].
         return _clamp(1.0 - (raw_distance / 2.0))
@@ -71,3 +73,8 @@ def _sigmoid(value: float) -> float:
         return 1.0 / (1.0 + math.exp(-value))
     exp_value = math.exp(value)
     return exp_value / (1.0 + exp_value)
+
+
+def _require_finite(value: float) -> None:
+    if not math.isfinite(value):
+        raise ValueError("raw vector score must be finite")

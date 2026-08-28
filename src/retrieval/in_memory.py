@@ -88,7 +88,21 @@ def _document_metadata(document: KnowledgeDocument) -> dict[str, object]:
 
 
 def _matches(metadata: dict[str, object], filters: RetrievalFilters) -> bool:
-    return all(metadata.get(name) == value for name, value in filters.as_metadata().items())
+    return all(
+        _normalise_metadata_value(name, metadata.get(name))
+        == _normalise_metadata_value(name, value)
+        for name, value in filters.as_metadata().items()
+    )
+
+
+def _normalise_metadata_value(name: str, value: object) -> str | None:
+    """Normalise the four conversation metadata dimensions for exact matching."""
+
+    if value is None:
+        return None
+    text = value.value if hasattr(value, "value") else str(value)
+    text = " ".join(text.strip().split())
+    return text.upper() if name == "severity" else text.casefold()
 
 
 def _cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:

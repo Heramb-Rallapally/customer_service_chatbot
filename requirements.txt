@@ -1,4 +1,8 @@
-pydantic>=2.5,<3
-pytest>=7.4,<9
-# Required only when instantiating OCIEmbeddingService.from_settings().
-oci>=2.0,<3
+pydantic==2.13.4
+pytest==8.4.2
+# Retrieval production integration (verified together in this environment).
+oci==2.168.3
+oracledb==3.4.2
+langchain==0.3.30
+langchain-core==0.3.86
+langchain-community==0.3.31

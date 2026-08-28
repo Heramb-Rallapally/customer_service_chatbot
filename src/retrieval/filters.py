@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -27,3 +28,26 @@ class RetrievalFilters(BaseModel):
             for name, value in self.model_dump().items()
             if value is not None
         }
+
+    @classmethod
+    def from_conversation_mapping(cls, filters: Mapping[str, str]) -> "RetrievalFilters":
+        """Convert the conversation port's exact filter mapping safely.
+
+        The conversation engine owns only product, version, issue type, and
+        severity. Rejecting unknown keys avoids silently dropping a constraint
+        that could otherwise return unrelated support guidance.
+        """
+
+        supported = {"product", "version", "issue_type", "severity"}
+        unsupported = set(filters) - supported
+        if unsupported:
+            raise ValueError(
+                "unsupported conversation retrieval filters: "
+                + ", ".join(sorted(unsupported))
+            )
+        if any(not isinstance(value, str) for value in filters.values()):
+            raise ValueError("conversation retrieval filter values must be strings")
+        values = {name: value.strip() for name, value in filters.items() if value.strip()}
+        if "severity" in values:
+            values["severity"] = values["severity"].upper()
+        return cls(**values)
