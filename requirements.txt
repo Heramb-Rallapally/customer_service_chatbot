@@ -7,7 +7,9 @@ streamlit==1.43.2
 httpx==0.28.1
 pandas==2.2.3
 plotly==6.0.1
-# Retrieval production integration (verified together in this environment).
+# Oracle retrieval integration (verified together in this environment).
+# httpx above is also the dependency-light client for the local Ollama API.
+# Retained for the optional OCI LLM/embedding providers.
 oci==2.168.3
 oracledb==3.4.2
 langchain==0.3.30

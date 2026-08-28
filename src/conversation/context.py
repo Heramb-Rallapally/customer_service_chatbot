@@ -159,7 +159,89 @@ class ContextUpdater:
 class ClarificationPlanner:
     """Select one missing field that most improves retrieval quality."""
 
-    def next_question(self, state: ConversationState) -> Optional[Clarification]:
+    _information_request = re.compile(
+        r"^\s*(?:what|which|where|when|who|why|how|does|do|is|are|can|could|"
+        r"would|should|tell\s+me|explain|describe|list)\b",
+        re.IGNORECASE,
+    )
+    _factual_information_request = re.compile(
+        r"^\s*(?:what\s+(?:is|are|does)|which|where|when|who|why|"
+        r"tell\s+me\s+about|explain|describe|list)\b",
+        re.IGNORECASE,
+    )
+    _word = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._+-]*")
+    _non_subject_words = frozenset(
+        {
+            "a",
+            "about",
+            "an",
+            "and",
+            "anything",
+            "are",
+            "at",
+            "be",
+            "can",
+            "could",
+            "describe",
+            "do",
+            "does",
+            "error",
+            "explain",
+            "fix",
+            "for",
+            "from",
+            "give",
+            "happen",
+            "happening",
+            "help",
+            "how",
+            "i",
+            "information",
+            "is",
+            "issue",
+            "it",
+            "list",
+            "me",
+            "my",
+            "next",
+            "of",
+            "on",
+            "our",
+            "please",
+            "problem",
+            "should",
+            "something",
+            "that",
+            "the",
+            "these",
+            "this",
+            "those",
+            "to",
+            "try",
+            "us",
+            "we",
+            "what",
+            "when",
+            "where",
+            "which",
+            "who",
+            "why",
+            "with",
+            "would",
+            "wrong",
+            "you",
+            "your",
+        }
+    )
+
+    def next_question(
+        self,
+        state: ConversationState,
+        *,
+        current_message: Optional[str] = None,
+    ) -> Optional[Clarification]:
+        if current_message and self.is_self_contained_knowledge_request(current_message):
+            return None
         if not state.product:
             return Clarification(
                 field="product",
@@ -176,6 +258,37 @@ class ClarificationPlanner:
                 question="What error message or specific behavior are you seeing?",
             )
         return None
+
+    def is_self_contained_knowledge_request(self, message: str) -> bool:
+        """Return whether a request names enough subject matter for knowledge search.
+
+        Missing product/version fields are useful for troubleshooting, but they are
+        not prerequisites for answering a specific informational question. Generic
+        referential requests such as ``How do I fix this?`` contain no subject token
+        and continue through the normal clarification sequence.
+        """
+
+        normalized = " ".join(message.strip().split())
+        if not normalized:
+            return False
+        starts_as_question = self._information_request.search(normalized) is not None
+        if not starts_as_question and not normalized.endswith("?"):
+            return False
+        subject_words = [
+            word.casefold()
+            for word in self._word.findall(normalized)
+            if word.casefold() not in self._non_subject_words
+        ]
+        minimum_subject_words = 1 if starts_as_question else 2
+        return len(subject_words) >= minimum_subject_words
+
+    def is_informational_knowledge_request(self, message: str) -> bool:
+        """Return whether a self-contained request asks for facts, not a fix."""
+
+        return bool(
+            self._factual_information_request.search(message)
+            and self.is_self_contained_knowledge_request(message)
+        )
 
 
 class RetrievalQueryBuilder:

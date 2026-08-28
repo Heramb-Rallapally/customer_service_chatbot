@@ -1,4 +1,4 @@
-"""Ports that let retrieval work with mocks and OCI/Oracle implementations."""
+"""Ports that let retrieval work with mocks and configured model/Oracle implementations."""
 
 from __future__ import annotations
 

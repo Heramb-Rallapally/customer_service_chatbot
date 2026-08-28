@@ -16,7 +16,7 @@ ChatApplicationService
 ConversationEngine
   ├─ ProactiveSupportService
   ├─ Retriever → OracleVS when live
-  ├─ LLMService → OCI Cohere when live
+  ├─ LLMService → configured Ollama or OCI adapter when live
   └─ ConversationMemory
       ↓
 ChatResponse + ConversationState + SupportEvent
@@ -50,7 +50,7 @@ See `examples/evaluation/cases.json` for a small labelled sample. Expected
 source identifiers must be adjusted to identifiers actually present in the
 target knowledge index.
 
-## Running against configured OCI and Oracle services
+## Running against configured model and Oracle services
 
 From the repository root:
 
@@ -65,10 +65,10 @@ contract contains `summary`, `metrics`, `breakdown`, and `cases`. It deliberatel
 does not contain raw user messages, prompts, generated responses, credentials,
 DSNs, or provider errors.
 
-The CLI uses `create_application()`, so a live run requires the same OCI and
-Oracle configuration as the production application. Configuration and client
-creation failures return a non-zero exit status. Live OCI/Oracle execution is
-not part of the normal test suite.
+The CLI uses `create_application()`, so a live run requires the selected model
+provider and the same Oracle configuration as the production application.
+Configuration and client creation failures return a non-zero exit status. Live
+model-provider/Oracle execution is not part of the normal test suite.
 
 ## Credential-free local evaluation
 

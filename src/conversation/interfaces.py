@@ -51,7 +51,7 @@ class GeneratedResponse:
 
 
 class LLMService(Protocol):
-    """Grounded response-generation boundary implemented by an OCI adapter."""
+    """Provider-neutral grounded response-generation boundary."""
 
     def generate(self, context: GenerationContext) -> GeneratedResponse:
         """Generate a response using only the supplied knowledge and context."""

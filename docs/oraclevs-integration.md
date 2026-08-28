@@ -6,7 +6,7 @@ The retrieval adapter is implemented and tested against these exact package vers
 - `langchain==0.3.30`
 - `langchain-core==0.3.86`
 - `oracledb==3.4.2`
-- `oci==2.168.3`
+- `oci==2.168.3` (retained for optional OCI provider selection)
 
 ## Actual OracleVS API
 
@@ -38,11 +38,24 @@ DistanceStrategy.COSINE)` and its vector index for `COSINE`, then construct
 `OracleVSVectorStore(..., metric=SimilarityMetric.COSINE, embedding_dimension=<model dimension>)`.
 The adapter validates injected OracleVS strategy when exposed, document/query
 vector dimensions, non-empty vectors, and finite values. Set
-`EMBEDDING_DIMENSION` to the selected OCI model's documented output dimension.
-`OCIEmbeddingService` validates every OCI response against it and is a
-LangChain `Embeddings` implementation, so it can be passed directly as
+`EMBEDDING_DIMENSION` to the selected model's documented output dimension.
+The default local `nomic-embed-text` model returns 768 values.
+`OllamaEmbeddingService` and the retained `OCIEmbeddingService` validate every
+provider response against the configured dimension and are LangChain
+`Embeddings` implementations, so either can be passed directly as
 OracleVS's `embedding_function`. Supply the same dimension to
 `OracleVSVectorStore` during production wiring.
+
+OracleVS creates `embedding VECTOR(<dimension>, FLOAT32)` only when the table
+does not already exist. Oracle 23ai Free does not expose vector dimensions in
+`USER_TAB_COLUMNS`, so the composition root inspects the existing table DDL
+through `DBMS_METADATA.GET_DDL` before initializing OracleVS and fails if the
+fixed column dimension differs from the selected embedding provider. A vector index does not have
+a separate embedding dimension; it indexes that fixed-dimension column. Never
+mix vectors from OCI and Ollama models in one table, even if their dimensions
+happen to match. Switching embedding models requires a new/reset table and a
+complete knowledge re-index. Schema replacement remains an operator-managed
+deployment action.
 
 Score conversion is stable across queries and never uses per-query min-max normalization:
 

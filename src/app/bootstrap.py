@@ -1,6 +1,6 @@
 """Lazy, explicit runtime composition for the customer-support application.
 
-Importing this module has no OCI or Oracle Database side effects.  Calling
+Importing this module has no Ollama, OCI, or Oracle Database side effects. Calling
 ``create_application`` builds the production graph, unless callers inject
 already-constructed services for tests or an alternate hosting environment.
 """
@@ -21,7 +21,8 @@ from src.conversation import (
 )
 from src.conversation.interfaces import LLMService, ProactiveService, Retriever
 from src.ingestion import DocumentIndexer, KnowledgeIndexer
-from src.llm import OciCohereLLMService
+from src.llm import OciCohereLLMService, OllamaLLMService
+from src.ollama import OllamaApiClient, OllamaClient, OllamaClientError
 from src.proactive import (
     ConversationMemoryHistoryProvider,
     ProactiveSupportService,
@@ -35,6 +36,7 @@ from src.proactive.interfaces import (
 )
 from src.retrieval import (
     OCIEmbeddingService,
+    OllamaEmbeddingService,
     OracleVSVectorStore,
     RetrievalService,
     SimilarityMetric,
@@ -70,20 +72,23 @@ class ApplicationServices:
     knowledge_indexer: KnowledgeIndexer
     analytics_sink: AnalyticsEventSink = field(default_factory=NoOpAnalyticsEventSink)
     oracle_connection: Any = None
+    ollama_client: Optional[OllamaClient] = None
     _owns_oracle_connection: bool = field(default=False, repr=False)
+    _owns_ollama_client: bool = field(default=False, repr=False)
     _closed: bool = field(default=False, init=False, repr=False)
 
     def close(self) -> None:
-        """Close the Oracle connection created by this container, if any."""
+        """Close model-provider and Oracle resources owned by this container."""
 
         if self._closed:
             return
         self._closed = True
-        if not self._owns_oracle_connection or self.oracle_connection is None:
-            return
-        close = getattr(self.oracle_connection, "close", None)
-        if callable(close):
-            close()
+        if self._owns_ollama_client and self.ollama_client is not None:
+            self.ollama_client.close()
+        if self._owns_oracle_connection and self.oracle_connection is not None:
+            close = getattr(self.oracle_connection, "close", None)
+            if callable(close):
+                close()
 
     def __enter__(self) -> "ApplicationServices":
         return self
@@ -113,12 +118,13 @@ def create_application(
     memory: Optional[ConversationMemory] = None,
     llm_service: Optional[LLMService] = None,
     analytics_sink: Optional[AnalyticsEventSink] = None,
+    ollama_client: Optional[OllamaClient] = None,
 ) -> ApplicationServices:
     """Construct the real dependency graph or use explicitly injected doubles.
 
     Production callers normally provide no optional dependency arguments.  Unit
     tests can inject a complete ``retrieval_service`` and ``llm_service`` to
-    avoid OCI and Oracle initialization altogether.
+    avoid model-provider and Oracle initialization altogether.
     """
 
     configured_settings = settings or get_settings()
@@ -144,32 +150,87 @@ def create_application(
     )
 
     owns_connection = False
+    owns_ollama_client = False
     connection = oracle_connection
+    resolved_ollama_client = ollama_client
     resolved_embeddings = embeddings
     resolved_store: Optional[OracleVSVectorStore] = None
     try:
+        ollama_models: list[str] = []
+        if (
+            retrieval_service is None
+            and resolved_embeddings is None
+            and _provider_name(
+                configured_settings.embedding_provider, "EMBEDDING_PROVIDER"
+            ) == "ollama"
+        ):
+            ollama_models.append(
+                configured_settings.embedding_model or "nomic-embed-text"
+            )
+        if (
+            llm_service is None
+            and _provider_name(configured_settings.llm_provider, "LLM_PROVIDER")
+            == "ollama"
+        ):
+            ollama_models.append(configured_settings.llm_model or "llama3.2:3b")
+        if ollama_models:
+            if resolved_ollama_client is None:
+                resolved_ollama_client = _create_ollama_client(configured_settings)
+                owns_ollama_client = True
+            _ensure_ollama_models(resolved_ollama_client, ollama_models)
+
         if connection is None and use_durable_memory:
             connection = _create_oracle_connection(configured_settings)
             owns_connection = True
         if retrieval_service is None:
             if resolved_embeddings is None:
-                resolved_embeddings = OCIEmbeddingService.from_settings(configured_settings)
+                if _provider_name(
+                    configured_settings.embedding_provider, "EMBEDDING_PROVIDER"
+                ) == "ollama":
+                    assert resolved_ollama_client is not None
+                    resolved_embeddings = OllamaEmbeddingService(
+                        resolved_ollama_client,
+                        model_id=configured_settings.embedding_model or "nomic-embed-text",
+                        embedding_dimension=configured_settings.embedding_dimension or 768,
+                    )
+                else:
+                    resolved_embeddings = _create_oci_embeddings(configured_settings)
             if connection is None and oracle_backend is None:
                 connection = _create_oracle_connection(configured_settings)
                 owns_connection = True
             backend = oracle_backend or _create_oraclevs_backend(
-                connection, resolved_embeddings, configured_settings
+                connection,
+                resolved_embeddings,
+                configured_settings,
+                embedding_dimension=getattr(
+                    resolved_embeddings,
+                    "embedding_dimension",
+                    configured_settings.embedding_dimension,
+                ),
             )
             resolved_store = OracleVSVectorStore(
                 backend,
                 metric=SimilarityMetric.COSINE,
-                embedding_dimension=configured_settings.embedding_dimension,
+                embedding_dimension=getattr(
+                    resolved_embeddings,
+                    "embedding_dimension",
+                    configured_settings.embedding_dimension,
+                ),
             )
             resolved_retrieval: Retriever = RetrievalService(resolved_embeddings, resolved_store)
         else:
             resolved_retrieval = retrieval_service
 
-        resolved_llm = llm_service or OciCohereLLMService.from_settings(configured_settings)
+        if llm_service is not None:
+            resolved_llm = llm_service
+        elif _provider_name(configured_settings.llm_provider, "LLM_PROVIDER") == "ollama":
+            assert resolved_ollama_client is not None
+            resolved_llm = OllamaLLMService(
+                resolved_ollama_client,
+                model_id=configured_settings.llm_model or "llama3.2:3b",
+            )
+        else:
+            resolved_llm = _create_oci_llm(configured_settings)
         resolved_memory = memory or (
             OracleConversationMemory(
                 connection,
@@ -215,6 +276,8 @@ def create_application(
     except Exception:
         if owns_connection:
             _close_quietly(connection)
+        if owns_ollama_client and resolved_ollama_client is not None:
+            resolved_ollama_client.close()
         raise
 
     return ApplicationServices(
@@ -229,7 +292,9 @@ def create_application(
         knowledge_indexer=knowledge_indexer,
         analytics_sink=resolved_analytics_sink,
         oracle_connection=connection,
+        ollama_client=resolved_ollama_client,
         _owns_oracle_connection=owns_connection,
+        _owns_ollama_client=owns_ollama_client,
     )
 
 
@@ -252,6 +317,8 @@ def _validate_configuration(
     needs_llm: bool,
     needs_durable_memory: bool,
 ) -> None:
+    embedding_provider = _provider_name(settings.embedding_provider, "EMBEDDING_PROVIDER")
+    llm_provider = _provider_name(settings.llm_provider, "LLM_PROVIDER")
     if needs_retrieval and needs_oraclevs_backend:
         _require_settings(settings, "oracle_vs_table")
     if needs_durable_memory:
@@ -264,11 +331,15 @@ def _validate_configuration(
             "oracle_db_dsn",
         )
     if needs_embeddings:
-        _require_settings(
-            settings,
-            "oci_compartment_id",
-            "embedding_model",
-        )
+        _require_settings(settings, "embedding_model", "embedding_dimension")
+        if settings.embedding_dimension is not None and settings.embedding_dimension < 1:
+            raise ApplicationConfigurationError("EMBEDDING_DIMENSION must be positive")
+        if embedding_provider == "oci":
+            _require_settings(settings, "oci_compartment_id")
+        elif settings.embedding_dimension != 768 and settings.embedding_model == "nomic-embed-text":
+            raise ApplicationConfigurationError(
+                "nomic-embed-text requires EMBEDDING_DIMENSION=768"
+            )
     if needs_oraclevs_backend and not re.fullmatch(
         r"[A-Za-z][A-Za-z0-9_$#]{0,127}", settings.oracle_vs_table or ""
     ):
@@ -282,7 +353,25 @@ def _validate_configuration(
             "ORACLE_CONVERSATION_TABLE must be a single valid Oracle identifier"
         )
     if needs_llm:
-        _require_settings(settings, "oci_compartment_id", "llm_model")
+        _require_settings(settings, "llm_model")
+        if llm_provider == "oci":
+            _require_settings(settings, "oci_compartment_id")
+    if (needs_embeddings and embedding_provider == "ollama") or (
+        needs_llm and llm_provider == "ollama"
+    ):
+        if not settings.ollama_base_url.strip():
+            raise ApplicationConfigurationError("OLLAMA_BASE_URL must not be blank")
+        if settings.ollama_timeout_seconds <= 0:
+            raise ApplicationConfigurationError("OLLAMA_TIMEOUT_SECONDS must be positive")
+
+
+def _provider_name(value: str, environment_name: str) -> str:
+    provider = value.strip().lower()
+    if provider not in {"ollama", "oci"}:
+        raise ApplicationConfigurationError(
+            f"{environment_name} must be 'ollama' or 'oci'"
+        )
+    return provider
 
 
 def _require_settings(settings: Settings, *attributes: str) -> None:
@@ -296,6 +385,7 @@ def _require_settings(settings: Settings, *attributes: str) -> None:
             "ORACLE_CONVERSATION_TABLE": "ORACLE_CONVERSATION_TABLE",
             "OCI_COMPARTMENT_ID": "OCI_COMPARTMENT_ID",
             "EMBEDDING_MODEL": "EMBEDDING_MODEL",
+            "EMBEDDING_DIMENSION": "EMBEDDING_DIMENSION",
             "LLM_MODEL": "LLM_MODEL",
         }
         names = [environment_names[name] for name in missing]
@@ -322,7 +412,11 @@ def _create_oracle_connection(settings: Settings) -> Any:
 
 
 def _create_oraclevs_backend(
-    connection: Any, embeddings: EmbeddingService, settings: Settings
+    connection: Any,
+    embeddings: EmbeddingService,
+    settings: Settings,
+    *,
+    embedding_dimension: Optional[int],
 ) -> Any:
     """Build the exact pinned LangChain OracleVS backend with COSINE distance."""
 
@@ -331,6 +425,12 @@ def _create_oraclevs_backend(
         from langchain_community.vectorstores.utils import DistanceStrategy
     except ImportError as exc:  # pragma: no cover - dependencies are pinned in production.
         raise ApplicationInitializationError("The pinned LangChain OracleVS dependency is not installed") from exc
+    if embedding_dimension is not None:
+        _validate_oracle_vector_dimension(
+            connection,
+            table_name=settings.oracle_vs_table or "",
+            expected_dimension=embedding_dimension,
+        )
     try:
         return OracleVS(
             connection,
@@ -340,6 +440,79 @@ def _create_oraclevs_backend(
         )
     except Exception as exc:
         raise ApplicationInitializationError("OracleVS initialization failed") from exc
+
+
+def _validate_oracle_vector_dimension(
+    connection: Any, *, table_name: str, expected_dimension: int
+) -> None:
+    """Reject an existing OracleVS table created for another embedding model."""
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) FROM user_tables WHERE table_name = :table_name",
+                table_name=table_name.upper(),
+            )
+            if int(cursor.fetchone()[0]) == 0:
+                return
+            cursor.execute(
+                "SELECT DBMS_METADATA.GET_DDL('TABLE', :table_name) FROM dual",
+                table_name=table_name.upper(),
+            )
+            raw_ddl = cursor.fetchone()[0]
+            read = getattr(raw_ddl, "read", None)
+            ddl = read() if callable(read) else raw_ddl
+    except Exception as exc:
+        raise ApplicationInitializationError(
+            "Oracle vector schema dimension validation failed"
+        ) from exc
+    if not isinstance(ddl, str):
+        raise ApplicationConfigurationError(
+            "Existing OracleVS table metadata is unavailable"
+        )
+    match = re.search(
+        r'"?EMBEDDING"?\s+VECTOR\(\s*(\d+)\s*,', ddl, flags=re.IGNORECASE
+    )
+    if match is None:
+        raise ApplicationConfigurationError(
+            "Existing OracleVS table does not expose a fixed embedding dimension"
+        )
+    stored_dimension = int(match.group(1))
+    if stored_dimension != expected_dimension:
+        raise ApplicationConfigurationError(
+            "Existing OracleVS table embedding dimension does not match the configured model; "
+            "use a correctly provisioned table and re-index the knowledge base"
+        )
+
+
+def _create_ollama_client(settings: Settings) -> OllamaApiClient:
+    return OllamaApiClient(
+        settings.ollama_base_url,
+        timeout_seconds=settings.ollama_timeout_seconds,
+    )
+
+
+def _ensure_ollama_models(client: OllamaClient, models: list[str]) -> None:
+    try:
+        client.ensure_models(models)
+    except OllamaClientError as exc:
+        raise ApplicationInitializationError(
+            "Ollama is unavailable or a configured model is not installed"
+        ) from exc
+
+
+def _create_oci_embeddings(settings: Settings) -> OCIEmbeddingService:
+    try:
+        return OCIEmbeddingService.from_settings(settings)
+    except Exception as exc:
+        raise ApplicationInitializationError("OCI embedding initialization failed") from exc
+
+
+def _create_oci_llm(settings: Settings) -> OciCohereLLMService:
+    try:
+        return OciCohereLLMService.from_settings(settings)
+    except Exception as exc:
+        raise ApplicationInitializationError("OCI LLM initialization failed") from exc
 
 
 def _close_quietly(connection: Any) -> None:

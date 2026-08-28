@@ -6,7 +6,7 @@ import os
 from collections.abc import Mapping
 from typing import Optional
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, SecretStr, model_validator
 
 
 class Settings(BaseModel):
@@ -16,6 +16,10 @@ class Settings(BaseModel):
     foundation never requires OCI or Oracle Database credentials.
     """
 
+    llm_provider: str = "ollama"
+    embedding_provider: str = "ollama"
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_timeout_seconds: float = 120.0
     oci_config_profile: str = "DEFAULT"
     oci_compartment_id: Optional[str] = None
     oci_endpoint: Optional[str] = None
@@ -32,6 +36,18 @@ class Settings(BaseModel):
     api_development_user_id: str = "local-demo-user"
     analytics_mode: str = "noop"
 
+    @model_validator(mode="after")
+    def apply_local_provider_defaults(self) -> "Settings":
+        """Apply Ollama model defaults without polluting restored OCI config."""
+
+        if self.embedding_provider.strip().lower() == "ollama":
+            self.embedding_model = self.embedding_model or "nomic-embed-text"
+            if self.embedding_dimension is None:
+                self.embedding_dimension = 768
+        if self.llm_provider.strip().lower() == "ollama":
+            self.llm_model = self.llm_model or "llama3.2:3b"
+        return self
+
     @classmethod
     def from_environment(
         cls, environ: Optional[Mapping[str, str]] = None
@@ -45,6 +61,14 @@ class Settings(BaseModel):
             return value if value else None
 
         return cls(
+            llm_provider=values.get("LLM_PROVIDER") or "ollama",
+            embedding_provider=values.get("EMBEDDING_PROVIDER") or "ollama",
+            ollama_base_url=(
+                values.get("OLLAMA_BASE_URL") or "http://127.0.0.1:11434"
+            ),
+            ollama_timeout_seconds=(
+                float(values.get("OLLAMA_TIMEOUT_SECONDS") or "120")
+            ),
             oci_config_profile=values.get("OCI_CONFIG_PROFILE") or "DEFAULT",
             oci_compartment_id=optional("OCI_COMPARTMENT_ID"),
             oci_endpoint=optional("OCI_ENDPOINT"),

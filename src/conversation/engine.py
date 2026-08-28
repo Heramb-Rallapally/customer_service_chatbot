@@ -43,10 +43,14 @@ logger = logging.getLogger(__name__)
 
 
 SYSTEM_INSTRUCTIONS = """You are a customer-support response generator.
-Use only the retrieved knowledge as factual support. Clearly state uncertainty.
+Use only the retrieved knowledge as factual support and answer the current
+question directly when that knowledge contains enough information. Clearly state
+when the knowledge base is insufficient. Ask a clarification question only when
+the request is genuinely ambiguous and the available context cannot resolve it.
 Never invent citations or unsupported troubleshooting steps. Do not repeat any
-excluded failed step. Give concise, actionable guidance and ask the customer to
-confirm whether the guidance resolved the issue.
+excluded failed step. For troubleshooting guidance, ask the customer to confirm
+whether the guidance resolved the issue; do not require that confirmation for a
+purely informational answer.
 """.strip()
 
 
@@ -173,7 +177,10 @@ class ConversationEngine:
                 expected_memory_version=expected_memory_version,
             )
 
-        clarification = self._clarification_planner.next_question(state)
+        clarification = self._clarification_planner.next_question(
+            state,
+            current_message=user_message,
+        )
         if clarification is not None:
             state.resolution_status = ResolutionStatus.NEEDS_CLARIFICATION
             return self._finish(
@@ -282,7 +289,10 @@ class ConversationEngine:
                 expected_memory_version=expected_memory_version,
             )
 
-        state.resolution_status = ResolutionStatus.AWAITING_CONFIRMATION
+        if self._clarification_planner.is_informational_knowledge_request(user_message):
+            state.resolution_status = ResolutionStatus.RESOLVED
+        else:
+            state.resolution_status = ResolutionStatus.AWAITING_CONFIRMATION
         return self._finish(
             state,
             ChatResponse(

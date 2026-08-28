@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import importlib
+import json
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from src.app import (
@@ -13,13 +15,19 @@ from src.app import (
 )
 from src.config import Settings
 from src.conversation import GeneratedResponse, InMemoryConversationMemory, OracleConversationMemory
-from src.llm import OciCohereLLMService
+from src.llm import OciCohereLLMService, OllamaLLMService
+from src.ollama import OllamaApiClient
 from src.proactive import (
     ConversationMemoryHistoryProvider,
     ProactiveSupportService,
     RetrievalEvidenceProvider,
 )
-from src.retrieval import OCIEmbeddingService, OracleVSVectorStore, RetrievalService
+from src.retrieval import (
+    OCIEmbeddingService,
+    OllamaEmbeddingService,
+    OracleVSVectorStore,
+    RetrievalService,
+)
 from src.ingestion import KnowledgeIndexer
 from src.analytics import InMemoryAnalyticsEventSink, NoOpAnalyticsEventSink
 
@@ -54,6 +62,8 @@ class Backend:
 
 def production_settings() -> Settings:
     return Settings(
+        llm_provider="oci",
+        embedding_provider="oci",
         oci_compartment_id="compartment",
         embedding_model="cohere.embed-english-v3.0",
         embedding_dimension=3,
@@ -72,6 +82,7 @@ def test_import_is_credential_free_and_does_not_connect(monkeypatch: pytest.Monk
         raise AssertionError("Oracle connection must not occur during import")
 
     monkeypatch.setattr(oracledb, "connect", connection_attempt)
+    monkeypatch.setattr(httpx, "Client", connection_attempt)
     module = importlib.import_module("src.app")
     importlib.reload(importlib.import_module("src.app.bootstrap"))
 
@@ -203,7 +214,7 @@ def test_production_factory_builds_expected_concrete_graph(monkeypatch: pytest.M
     )
     monkeypatch.setattr(bootstrap, "_create_oracle_connection", lambda _settings: connection)
     monkeypatch.setattr(
-        bootstrap, "_create_oraclevs_backend", lambda *_args: Backend()
+        bootstrap, "_create_oraclevs_backend", lambda *_args, **_kwargs: Backend()
     )
     monkeypatch.setattr(
         bootstrap.OCIEmbeddingService, "from_settings", lambda _settings: embeddings
@@ -233,6 +244,89 @@ def test_production_factory_builds_expected_concrete_graph(monkeypatch: pytest.M
     services.close()
     services.close()
     assert connection.close_calls == 1
+
+
+def test_default_factory_selects_ollama_providers_with_one_model_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.app.bootstrap as bootstrap
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "models": [
+                    {"name": "nomic-embed-text:latest"},
+                    {"name": "llama3.2:3b"},
+                ]
+            },
+        )
+
+    http_client = httpx.Client(
+        base_url="http://ollama.test", transport=httpx.MockTransport(handler)
+    )
+    client = OllamaApiClient("http://ollama.test", client=http_client)
+    monkeypatch.setattr(
+        bootstrap,
+        "_create_oci_embeddings",
+        lambda _settings: pytest.fail("default graph must not initialize OCI embeddings"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_create_oci_llm",
+        lambda _settings: pytest.fail("default graph must not initialize OCI LLM"),
+    )
+    monkeypatch.setattr(
+        bootstrap, "_create_oraclevs_backend", lambda *_args, **_kwargs: Backend()
+    )
+
+    services = create_application(
+        settings=Settings(oracle_vs_table="SUPPORT_KNOWLEDGE"),
+        oracle_connection=FakeConnection(),
+        ollama_client=client,
+    )
+
+    assert isinstance(services.embeddings, OllamaEmbeddingService)
+    assert isinstance(services.llm_service, OllamaLLMService)
+    assert len(requests) == 1
+    assert requests[0].url.path == "/api/tags"
+    assert services.conversation_engine._llm_service is services.llm_service
+
+
+def test_existing_oracle_vector_dimension_must_match_selected_model() -> None:
+    import src.app.bootstrap as bootstrap
+
+    class Cursor:
+        calls = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            pass
+
+        def execute(self, _statement: str, **parameters: object) -> None:
+            assert parameters == {"table_name": "SUPPORT_KNOWLEDGE"}
+            self.calls += 1
+
+        def fetchone(self) -> tuple[object]:
+            if self.calls == 1:
+                return (1,)
+            return ('CREATE TABLE SUPPORT_KNOWLEDGE (EMBEDDING VECTOR(1024, FLOAT32))',)
+
+    class Connection:
+        def cursor(self) -> Cursor:
+            return Cursor()
+
+    with pytest.raises(
+        bootstrap.ApplicationConfigurationError, match="embedding dimension"
+    ):
+        bootstrap._validate_oracle_vector_dimension(
+            Connection(), table_name="SUPPORT_KNOWLEDGE", expected_dimension=768
+        )
 
 
 def test_configuration_errors_are_safe_and_happen_before_external_setup(

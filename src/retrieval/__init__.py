@@ -5,6 +5,7 @@ from .filters import RetrievalFilters
 from .in_memory import HashEmbeddingService, InMemoryVectorStore
 from .metrics import OracleScoreSemantics, SimilarityMetric
 from .oci_embeddings import OCIEmbeddingService
+from .ollama_embeddings import OllamaEmbeddingService
 from .oracle_vs import OracleVSVectorStore
 from .service import RetrievalService
 
@@ -12,6 +13,7 @@ __all__ = [
     "HashEmbeddingService",
     "InMemoryVectorStore",
     "OCIEmbeddingService",
+    "OllamaEmbeddingService",
     "OracleScoreSemantics",
     "OracleVSVectorStore",
     "RetrievalEvaluationCase",

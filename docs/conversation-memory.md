@@ -22,6 +22,8 @@ ID, version, and unambiguous Oracle `TIMESTAMP WITH TIME ZONE` creation/update
 timestamps. Deserialization validates JSON with `ConversationState`; malformed
 stored state raises `ConversationPersistenceError` rather than being silently
 discarded.
+Deserialization accepts both textual CLOB values and the native Python JSON
+object representation returned by Oracle Database 23ai thin-mode connections.
 
 ## Concurrency
 

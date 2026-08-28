@@ -12,6 +12,7 @@ from src.conversation import (
     InMemoryConversationMemory,
 )
 from src.models import (
+    Citation,
     ConversationMessage,
     ConversationState,
     MessageRole,
@@ -138,6 +139,65 @@ def test_missing_information_is_requested_without_repeating_known_product() -> N
     assert state is not None
     assert state.product == "Oracle VPN"
     assert state.turn_count == 2
+
+
+def test_specific_knowledge_question_is_answered_with_retrieved_citations() -> None:
+    question = "What is Oracle AI Database at AWS and which AWS regions are supported?"
+    evidence = RetrievalResult(
+        document_id="oracle-database-at-aws-regions",
+        content=(
+            "Oracle AI Database at AWS is an Oracle managed database service "
+            "deployed in supported AWS regions."
+        ),
+        score=0.92,
+        metadata={"source": "Oracle AI Database at AWS documentation"},
+    )
+    llm = FakeLLM(
+        GeneratedResponse(
+            message="Oracle AI Database at AWS is available in the documented AWS regions.",
+            confidence=0.9,
+        )
+    )
+    engine, _, retriever, _ = build_engine(
+        retriever=FakeRetriever([evidence]),
+        llm=llm,
+    )
+
+    response = engine.handle_message(
+        conversation_id="aws-knowledge-question",
+        user_message=question,
+    )
+
+    assert response.message.startswith("Oracle AI Database at AWS")
+    assert response.citations == [
+        Citation(
+            source="Oracle AI Database at AWS documentation",
+            document_id="oracle-database-at-aws-regions",
+        )
+    ]
+    assert retriever.calls == [{"query": question, "filters": {}, "top_k": 5}]
+    assert llm.contexts[0].current_user_message == question
+    state = engine.get_state("aws-knowledge-question")
+    assert state is not None
+    assert state.resolution_status is ResolutionStatus.RESOLVED
+
+
+def test_specific_unknown_knowledge_question_uses_safe_fallback() -> None:
+    llm = FakeLLM()
+    engine, _, retriever, _ = build_engine(
+        retriever=FakeRetriever([]),
+        llm=llm,
+    )
+
+    response = engine.handle_message(
+        conversation_id="unknown-knowledge-question",
+        user_message="What warranty applies to a fictional lunar database appliance?",
+    )
+
+    assert response.escalation_required is True
+    assert "won't guess" in response.message
+    assert len(retriever.calls) == 1
+    assert not llm.contexts
 
 
 def test_retriever_and_llm_receive_focused_structured_context() -> None:

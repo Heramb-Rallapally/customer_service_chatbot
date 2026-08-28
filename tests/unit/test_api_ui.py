@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from src.api import ChatApplicationService, ChatRequest
 from src.models import ArticleReference, ChatResponse, Citation
-from src.ui import response_view, summarize_events
+from src.ui import render_streamlit_response, response_view, summarize_events
 
 
 class StubConversationService:
@@ -93,6 +93,39 @@ def test_response_view_exposes_all_customer_facing_response_details() -> None:
         "escalation_required": True,
         "confidence": 0.4,
     }
+
+
+def test_streamlit_renders_generated_answer_before_secondary_metadata() -> None:
+    class StreamlitRecorder:
+        def __init__(self) -> None:
+            self.events: list[tuple[str, str]] = []
+
+        def write(self, value: str) -> None:
+            self.events.append(("write", value))
+
+        def caption(self, value: str) -> None:
+            self.events.append(("caption", value))
+
+        def markdown(self, value: str) -> None:
+            self.events.append(("markdown", value))
+
+        def warning(self, value: str) -> None:
+            self.events.append(("warning", value))
+
+    streamlit = StreamlitRecorder()
+    response = ChatResponse(
+        message="Oracle AI Database at AWS is described by the retrieved documentation.",
+        citations=[Citation(source="Oracle AI Database at AWS documentation")],
+        related_articles=[
+            ArticleReference(article_id="aws-article", title="Supported AWS regions")
+        ],
+    )
+
+    render_streamlit_response(streamlit, response)
+
+    assert streamlit.events[0] == ("write", response.message)
+    assert ("markdown", "**Sources**") in streamlit.events
+    assert ("write", "- Oracle AI Database at AWS documentation") in streamlit.events
 
 
 def test_analytics_summarizes_provided_events_without_filling_missing_metrics() -> None:

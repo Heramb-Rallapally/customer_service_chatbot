@@ -140,6 +140,25 @@ def test_oracle_memory_round_trips_all_conversation_state_fields() -> None:
     assert connection.commit_calls == 1
 
 
+def test_oracle_memory_accepts_native_json_objects_returned_by_oracle_23ai() -> None:
+    connection = FakeOracleConnection()
+    state = rich_state()
+    connection.rows[state.conversation_id] = {
+        "user_id": state.user_id,
+        "state_json": state.model_dump(mode="json"),
+        "summary": None,
+        "version": 1,
+    }
+
+    snapshot = OracleConversationMemory(
+        connection, table_name="CHAT_CONVERSATIONS"
+    ).load_with_version(state.conversation_id)
+
+    assert snapshot is not None
+    assert snapshot.state == state
+    assert snapshot.version == 1
+
+
 def test_oracle_memory_updates_existing_state_and_persists_summary() -> None:
     connection = FakeOracleConnection()
     memory = OracleConversationMemory(connection, table_name="CHAT_CONVERSATIONS")

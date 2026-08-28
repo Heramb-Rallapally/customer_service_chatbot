@@ -61,7 +61,7 @@ class OracleConversationMemory:
             return None
         try:
             state_json, version = row[0], int(row[1])
-            state = ConversationState.model_validate_json(self._clob_to_text(state_json))
+            state = self._deserialize_state(state_json)
         except (IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise ConversationPersistenceError("Stored conversation state is invalid") from exc
         if version < 1:
@@ -143,7 +143,7 @@ class OracleConversationMemory:
         states: list[ConversationState] = []
         try:
             for row in rows:
-                state = ConversationState.model_validate_json(self._clob_to_text(row[0]))
+                state = self._deserialize_state(row[0])
                 if (
                     state.user_id == user_id
                     and state.conversation_id != exclude_conversation_id
@@ -233,6 +233,16 @@ class OracleConversationMemory:
         if not isinstance(text, str):
             raise TypeError("stored value must be text")
         return text
+
+    @classmethod
+    def _deserialize_state(cls, value: Any) -> ConversationState:
+        """Accept text CLOBs and Oracle 23ai's native JSON object result."""
+
+        read = getattr(value, "read", None)
+        persisted = read() if callable(read) else value
+        if isinstance(persisted, dict):
+            return ConversationState.model_validate(persisted)
+        return ConversationState.model_validate_json(cls._clob_to_text(persisted))
 
     def _fetch_one(self, statement: str, parameters: dict[str, Any]) -> Any:
         cursor = None

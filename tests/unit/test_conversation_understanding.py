@@ -99,6 +99,35 @@ def test_clarification_planner_does_not_ask_for_known_information() -> None:
     assert clarification.field == "version"
 
 
+def test_specific_knowledge_question_does_not_require_support_fields() -> None:
+    planner = ClarificationPlanner()
+
+    clarification = planner.next_question(
+        ConversationState(conversation_id="c1"),
+        current_message=(
+            "What is Oracle AI Database at AWS and which AWS regions are supported?"
+        ),
+    )
+
+    assert clarification is None
+    assert planner.is_informational_knowledge_request(
+        "What is Oracle AI Database at AWS and which AWS regions are supported?"
+    )
+
+
+def test_referential_request_without_context_still_requires_clarification() -> None:
+    planner = ClarificationPlanner()
+
+    clarification = planner.next_question(
+        ConversationState(conversation_id="c1"),
+        current_message="How do I fix this?",
+    )
+
+    assert clarification is not None
+    assert clarification.field == "product"
+    assert not planner.is_informational_knowledge_request("How do I fix this?")
+
+
 def test_retrieval_query_uses_structured_context_and_filters() -> None:
     state = ConversationState(
         conversation_id="c1",

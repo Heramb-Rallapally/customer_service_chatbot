@@ -14,7 +14,7 @@ KnowledgeIndexer.index_documents
        ↓
 RetrievalService.index_documents
        ↓
-OCI embeddings (one OracleVS `add_texts` batch) → OracleVS
+configured embeddings (one OracleVS `add_texts` batch) → OracleVS
 ```
 
 The indexer submits the same `KnowledgeDocument` instances it receives. Their

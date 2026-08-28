@@ -12,7 +12,21 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Real credentials are not required to import the project or run its contract tests. `.env.example` documents environment variable names for later integrations; no `.env` file is loaded automatically.
+Real credentials are not required to import the project or run its contract tests. `.env.example` documents environment variable names for local Ollama and Oracle integrations; no `.env` file is loaded automatically.
+
+For local model inference, install and start Ollama, then pull the configured
+models:
+
+```bash
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+python -m src.ollama.health
+```
+
+The default provider configuration is `LLM_PROVIDER=ollama` and
+`EMBEDDING_PROVIDER=ollama`, using Ollama's local API at
+`http://127.0.0.1:11434`. See [local Ollama setup](docs/ollama-local.md) before
+creating or reusing an OracleVS table.
 
 Run the test suite with:
 
@@ -28,10 +42,11 @@ conversation-facing API is
 `search(*, query: str, filters: Mapping[str, str], top_k: int)`. It supports
 COSINE, EUCLIDEAN, and DOT vector metrics; all returned scores are normalized
 to `[0, 1]`, where higher is better. Production
-integration uses `OCIEmbeddingService` and an injected LangChain OracleVS
+integration uses the configured `OllamaEmbeddingService` (or retained
+`OCIEmbeddingService`) and an injected LangChain OracleVS
 instance through `OracleVSVectorStore`; database connection and schema setup
-remain owned by the database module. OCI use requires `OCI_COMPARTMENT_ID`,
-`EMBEDDING_MODEL`, and a valid OCI profile. Retrieval evaluation provides
+remain owned by the database module. Local Ollama uses `nomic-embed-text` with
+768-dimensional vectors. Retrieval evaluation provides
 Recall@K and MRR against explicit query-to-document relevance labels.
 
 Oracle production integration is pinned to `langchain-community==0.3.31`,
@@ -59,7 +74,7 @@ See `AGENTS.md` for the authoritative architecture, integration, security, and t
 
 ## Run the API and UI
 
-Install dependencies, configure the OCI/Oracle values in your environment, then
+Install dependencies, start Ollama, and configure the Oracle values in your environment, then
 start the API from the repository root:
 
 ```bash
@@ -67,7 +82,7 @@ uvicorn src.api.app:app --reload
 ```
 
 The API exposes `GET /health` for process health and `POST /chat` using the
-existing `ChatRequest` and `ChatResponse` models. OCI/Oracle clients are
+existing `ChatRequest` and `ChatResponse` models. Ollama/Oracle clients are
 created lazily on the first chat request through `src.app.create_application()`;
 importing the API or calling `/health` does not require infrastructure.
 
@@ -79,8 +94,9 @@ streamlit run src/ui/app.py
 
 The UI communicates only through FastAPI using `HttpChatApiClient`. Set
 `API_BASE_URL` when the API is not at `http://127.0.0.1:8000`. Real chat
-requires configured OCI Generative AI and Oracle AI Database access; those
-services are not exercised by the credential-free test suite.
+requires the configured Ollama models and Oracle AI Database access. The
+credential-free suite does not exercise Oracle; the Ollama/Oracle live test is
+explicitly opt-in.
 
 ## Analytics and feedback
 
@@ -144,8 +160,8 @@ python -m src.evaluation.run \
   --output examples/evaluation/results.json
 ```
 
-The CLI exercises the configured composition root and therefore requires live
-OCI/Oracle configuration. Credential-free integration tests use deterministic
+The CLI exercises the configured composition root and therefore requires the
+selected model provider and live Oracle configuration. Credential-free integration tests use deterministic
 providers through the same public contracts and real `ConversationEngine` and
 `ChatApplicationService` path. Evaluation never performs a second retrieval
 for telemetry, stores no raw chat or generated response in reports, and does

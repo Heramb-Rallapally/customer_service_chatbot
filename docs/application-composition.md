@@ -2,17 +2,17 @@
 
 `src.app.create_application()` is the runtime composition root. It creates the
 production dependency graph only when called; importing `src.app` has no Oracle
-Database or OCI credential, network, or client side effect.
+Database, Ollama, or OCI credential/network/client side effect.
 
 ```text
 Settings
   ├─ Oracle Database connection ──> LangChain OracleVS (COSINE)
-  ├─ OCI embeddings ──────────────┘
+  ├─ configured embeddings ───────┘
   │                                  ↓
   │                           OracleVSVectorStore
   │                                  ↓
   │                           RetrievalService
-  ├─ OCI Cohere LLM ──────────────────────────────┐
+  ├─ configured LLM ──────────────────────────────┐
   └─ ProactiveSupportService ───────────────────────┤
        ├─ RetrievalEvidenceProvider ── RetrievalService
        └─ ConversationMemoryHistoryProvider ── memory
@@ -20,11 +20,13 @@ Settings
                                             ConversationEngine
 ```
 
-The production graph requires `OCI_COMPARTMENT_ID`, `EMBEDDING_MODEL`,
-`LLM_MODEL`, `ORACLE_DB_USER`, `ORACLE_DB_PASSWORD`, `ORACLE_DB_DSN`, and
-`ORACLEVS_TABLE`. `ORACLEVS_TABLE` is validated as a single Oracle identifier.
-`OCI_CONFIG_PROFILE` and `OCI_ENDPOINT` remain optional configuration inputs
-used by the OCI SDK clients.
+The default graph uses `LLM_PROVIDER=ollama`, `EMBEDDING_PROVIDER=ollama`,
+`LLM_MODEL=llama3.2:3b`, and `EMBEDDING_MODEL=nomic-embed-text` through the
+local `OLLAMA_BASE_URL`. It checks the Ollama process and required models once
+during lazy application construction. Oracle still requires
+`ORACLE_DB_USER`, `ORACLE_DB_PASSWORD`, `ORACLE_DB_DSN`, and `ORACLEVS_TABLE`.
+Set either provider to `oci` to select the retained OCI adapter; that provider
+then also requires `OCI_COMPARTMENT_ID` and the appropriate OCI model ID.
 
 OracleVS is constructed with the pinned LangChain Community API and
 `DistanceStrategy.COSINE`; the hardened `OracleVSVectorStore` performs the
@@ -45,8 +47,8 @@ with a reviewed OCI-backed callable through `proactive_sentiment_analyzer`; the
 proactive package does not create a second OCI client at import time.
 
 Tests may inject `retrieval_service`, `llm_service`, memory, proactive
-services, or individual proactive providers. Fully injected tests make no OCI
-or Oracle connection.
+services, the Ollama API client, or individual proactive providers. Fully
+injected tests make no model-provider or Oracle connection.
 
 ## Optional analytics and feedback
 
