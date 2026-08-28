@@ -15,6 +15,7 @@ from src.api import (
     create_app,
     create_runtime_app,
 )
+from src.analytics import InMemoryAnalyticsEventSink, SupportEvent, SupportEventType
 from src.app import ApplicationConfigurationError, ApplicationInitializationError
 from src.conversation import (
     ConversationEngine,
@@ -317,3 +318,142 @@ def test_request_state_identity_provider_uses_server_populated_identity() -> Non
 
     assert response.status_code == 200
     assert conversation.calls[0]["user_id"] == "production-user"
+
+
+def test_feedback_route_uses_authenticated_identity_and_enforces_ownership() -> None:
+    class FeedbackConversation(ConversationDouble):
+        def __init__(self) -> None:
+            super().__init__(ChatResponse(message="Grounded response"))
+            self.state = ConversationState(
+                conversation_id="conversation-1",
+                user_id="user-a",
+                resolution_status=ResolutionStatus.AWAITING_CONFIRMATION,
+            )
+
+        def get_state(self, _conversation_id: str) -> ConversationState:
+            return self.state.model_copy(deep=True)
+
+    conversation = FeedbackConversation()
+    identities = MutableIdentityProvider("user-a")
+    sink = InMemoryAnalyticsEventSink()
+    client = TestClient(
+        create_app(
+            ChatApplicationService(conversation, analytics_sink=sink),
+            identity_provider=identities,
+        )
+    )
+
+    accepted = client.post(
+        "/feedback",
+        json={"conversation_id": "conversation-1", "rating": "positive", "comment": "Useful"},
+    )
+    assert accepted.status_code == 200
+    assert accepted.json() == {"accepted": True}
+    assert sink.events()[0].user_id == "user-a"
+    assert sink.events()[0].feedback_rating.value == "positive"
+
+    identities.identity = AuthenticatedIdentity("user-b")
+    denied = client.post(
+        "/feedback",
+        json={
+            "conversation_id": "conversation-1",
+            "rating": "negative",
+            "user_id": "user-a",
+        },
+    )
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == "This conversation is not available to this user."
+    assert "user-a" not in denied.text
+
+
+def test_chat_returns_success_when_analytics_sink_fails() -> None:
+    class FailingAnalyticsSink:
+        def record(self, _event: SupportEvent) -> None:
+            raise RuntimeError("analytics infrastructure detail")
+
+    client = TestClient(
+        create_app(
+            ChatApplicationService(
+                ConversationDouble(ChatResponse(message="Grounded response")),
+                analytics_sink=FailingAnalyticsSink(),
+            ),
+            identity_provider=DevelopmentIdentityProvider("user-1"),
+        )
+    )
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Grounded response"
+    assert "infrastructure" not in response.text
+
+
+def test_one_accepted_chat_request_records_exactly_one_outcome_event() -> None:
+    class StatefulConversation(ConversationDouble):
+        def get_state(self, conversation_id: str) -> ConversationState:
+            return ConversationState(conversation_id=conversation_id, user_id="user-1")
+
+    sink = InMemoryAnalyticsEventSink()
+    client = TestClient(
+        create_app(
+            ChatApplicationService(
+                StatefulConversation(ChatResponse(message="Grounded response")),
+                analytics_sink=sink,
+            ),
+            identity_provider=DevelopmentIdentityProvider("user-1"),
+        )
+    )
+
+    response = client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "VPN help"}
+    )
+
+    assert response.status_code == 200
+    events = sink.events()
+    assert len(events) == 1
+    assert events[0].event_type is SupportEventType.CHAT_OUTCOME
+
+
+def test_feedback_requires_authenticated_identity_and_valid_payload() -> None:
+    client = TestClient(
+        create_app(
+            ChatApplicationService(ConversationDouble(ChatResponse(message="unused"))),
+            identity_provider=RequestStateIdentityProvider(),
+        )
+    )
+    assert client.post(
+        "/feedback", json={"conversation_id": "conversation-1", "rating": "positive"}
+    ).status_code == 401
+
+    authenticated = TestClient(
+        create_app(
+            ChatApplicationService(ConversationDouble(ChatResponse(message="unused"))),
+            identity_provider=DevelopmentIdentityProvider("user-1"),
+        )
+    )
+    assert authenticated.post(
+        "/feedback", json={"conversation_id": " ", "rating": "maybe"}
+    ).status_code == 422
+
+
+def test_analytics_events_endpoint_is_scoped_to_authenticated_user() -> None:
+    class AnalyticsConversation(ConversationDouble):
+        def get_state(self, conversation_id: str) -> ConversationState:
+            return ConversationState(conversation_id=conversation_id, user_id="user-a")
+
+    identities = MutableIdentityProvider("user-a")
+    sink = InMemoryAnalyticsEventSink()
+    client = TestClient(
+        create_app(
+            ChatApplicationService(AnalyticsConversation(ChatResponse(message="response")), analytics_sink=sink),
+            identity_provider=identities,
+        )
+    )
+    assert client.post(
+        "/chat", json={"conversation_id": "conversation-1", "user_message": "Help"}
+    ).status_code == 200
+    assert len(client.get("/analytics/events").json()) == 1
+    identities.identity = AuthenticatedIdentity("user-b")
+    assert client.get("/analytics/events").json() == []

@@ -30,6 +30,7 @@ class Settings(BaseModel):
     api_base_url: str = "http://127.0.0.1:8000"
     api_auth_mode: str = "development"
     api_development_user_id: str = "local-demo-user"
+    analytics_mode: str = "noop"
 
     @classmethod
     def from_environment(
@@ -64,6 +65,7 @@ class Settings(BaseModel):
             api_development_user_id=(
                 values.get("API_DEVELOPMENT_USER_ID") or "local-demo-user"
             ),
+            analytics_mode=values.get("ANALYTICS_MODE") or "noop",
         )
 
 

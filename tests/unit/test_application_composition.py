@@ -21,6 +21,7 @@ from src.proactive import (
 )
 from src.retrieval import OCIEmbeddingService, OracleVSVectorStore, RetrievalService
 from src.ingestion import KnowledgeIndexer
+from src.analytics import InMemoryAnalyticsEventSink, NoOpAnalyticsEventSink
 
 
 class FakeRetriever:
@@ -106,6 +107,36 @@ def test_fully_injected_services_skip_external_initialization(monkeypatch: pytes
     assert services.conversation_engine._llm_service is llm
     assert services.conversation_engine._proactive_service is proactive
     assert services.conversation_engine._memory is memory
+    assert isinstance(services.analytics_sink, NoOpAnalyticsEventSink)
+
+
+def test_analytics_sink_is_explicitly_injectable_or_enabled_for_local_memory() -> None:
+    sink = InMemoryAnalyticsEventSink()
+    injected = create_application(
+        settings=Settings(),
+        retrieval_service=FakeRetriever(),
+        llm_service=FakeLLM(),
+        analytics_sink=sink,
+    )
+    assert injected.analytics_sink is sink
+
+    local = create_application(
+        settings=Settings(analytics_mode="memory"),
+        retrieval_service=FakeRetriever(),
+        llm_service=FakeLLM(),
+    )
+    assert isinstance(local.analytics_sink, InMemoryAnalyticsEventSink)
+
+
+def test_invalid_analytics_mode_is_a_safe_configuration_error() -> None:
+    import src.app.bootstrap as bootstrap
+
+    with pytest.raises(bootstrap.ApplicationConfigurationError, match="ANALYTICS_MODE"):
+        create_application(
+            settings=Settings(analytics_mode="external"),
+            retrieval_service=FakeRetriever(),
+            llm_service=FakeLLM(),
+        )
 
 
 def test_individual_proactive_providers_are_injectable_without_external_setup() -> None:

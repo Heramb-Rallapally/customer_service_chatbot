@@ -22,3 +22,32 @@ class ChatRequest(BaseModel):
         if not value.strip():
             raise ValueError("must not be blank")
         return value
+
+
+class FeedbackRequest(BaseModel):
+    """Authenticated customer feedback for a conversation outcome."""
+
+    conversation_id: str = Field(min_length=1)
+    rating: str = Field(pattern="^(positive|negative)$")
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+    @field_validator("conversation_id")
+    @classmethod
+    def reject_blank_conversation_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("comment")
+    @classmethod
+    def normalize_comment(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class FeedbackResponse(BaseModel):
+    """Deliberately small acknowledgement without internal storage details."""
+
+    accepted: bool = True

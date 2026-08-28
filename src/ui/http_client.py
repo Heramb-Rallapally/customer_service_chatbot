@@ -6,7 +6,8 @@ from typing import Optional
 
 import httpx
 
-from src.api.schemas import ChatRequest
+from src.analytics import FeedbackRating, SupportEvent
+from src.api.schemas import ChatRequest, FeedbackRequest
 from src.models import ChatResponse
 
 
@@ -68,3 +69,46 @@ class HttpChatApiClient:
     def close(self) -> None:
         if self._owns_client:
             self._client.close()
+
+    def submit_feedback(
+        self,
+        *,
+        conversation_id: str,
+        rating: FeedbackRating,
+        comment: Optional[str] = None,
+    ) -> None:
+        request = FeedbackRequest(
+            conversation_id=conversation_id,
+            rating=rating.value,
+            comment=comment,
+        )
+        try:
+            response = self._client.post(
+                f"{self._base_url}/feedback",
+                json=request.model_dump(exclude_none=True),
+            )
+            response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise ChatApiClientError("The support API timed out. Please try again.") from exc
+        except httpx.HTTPStatusError as exc:
+            raise ChatApiClientError("The support API could not process the request.") from exc
+        except httpx.HTTPError as exc:
+            raise ChatApiClientError("The support API is unavailable. Please try again.") from exc
+
+    def analytics_events(self) -> list[SupportEvent]:
+        try:
+            response = self._client.get(f"{self._base_url}/analytics/events")
+            response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise ChatApiClientError("The support API timed out. Please try again.") from exc
+        except httpx.HTTPStatusError as exc:
+            raise ChatApiClientError("The support API could not process the request.") from exc
+        except httpx.HTTPError as exc:
+            raise ChatApiClientError("The support API is unavailable. Please try again.") from exc
+        try:
+            payload = response.json()
+            if not isinstance(payload, list):
+                raise ValueError("analytics response must be a list")
+            return [SupportEvent.model_validate(event) for event in payload]
+        except (TypeError, ValueError) as exc:
+            raise ChatApiClientError("The support API returned an invalid response.") from exc

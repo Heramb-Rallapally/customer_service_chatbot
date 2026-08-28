@@ -15,9 +15,10 @@ from src.app import (
     create_application,
 )
 from src.conversation import ConversationOwnershipError
+from src.analytics import FeedbackRating, SupportEvent
 from src.models import ChatResponse
 
-from .schemas import ChatRequest
+from .schemas import ChatRequest, FeedbackRequest, FeedbackResponse
 from .identity import (
     AuthenticatedIdentity,
     AuthenticationRequiredError,
@@ -102,6 +103,60 @@ def create_app(
                 detail="Unable to process the support request right now.",
             )
 
+    @app.post("/feedback", response_model=FeedbackResponse)
+    def post_feedback(
+        request: FeedbackRequest,
+        identity: AuthenticatedIdentity = Depends(get_authenticated_identity),
+    ) -> FeedbackResponse:
+        try:
+            chat_service.record_feedback(
+                conversation_id=request.conversation_id,
+                user_id=identity.user_id,
+                rating=FeedbackRating(request.rating),
+                comment=request.comment,
+            )
+            return FeedbackResponse()
+        except (
+            ConversationServiceUnavailableError,
+            ApplicationConfigurationError,
+            ApplicationInitializationError,
+        ) as exc:
+            logger.warning("Feedback service unavailable: %s", exc)
+            raise HTTPException(
+                status_code=503,
+                detail="The support service is temporarily unavailable. Please try again.",
+            ) from exc
+        except ConversationOwnershipError as exc:
+            logger.warning("Feedback ownership check failed")
+            raise HTTPException(
+                status_code=403,
+                detail="This conversation is not available to this user.",
+            ) from exc
+        except ValueError as exc:
+            logger.warning("Invalid feedback request")
+            raise HTTPException(status_code=400, detail="Invalid feedback request.") from exc
+        except Exception:
+            logger.exception("Unexpected failure while recording feedback")
+            raise HTTPException(
+                status_code=500,
+                detail="Unable to process the support request right now.",
+            )
+
+    @app.get("/analytics/events", response_model=list[SupportEvent])
+    def get_analytics_events(
+        identity: AuthenticatedIdentity = Depends(get_authenticated_identity),
+    ) -> list[SupportEvent]:
+        """Return only the authenticated user's event snapshots for the demo UI."""
+
+        try:
+            return list(chat_service.events_for_user(identity.user_id))
+        except Exception:
+            logger.warning("Analytics events unavailable")
+            raise HTTPException(
+                status_code=503,
+                detail="The support service is temporarily unavailable. Please try again.",
+            )
+
     return app
 
 
@@ -118,12 +173,7 @@ class _LazyChatApplicationService:
 
     def chat(self, request: ChatRequest) -> ChatResponse:
         with self._lock:
-            if self._chat_service is None:
-                self._services = self._application_factory()
-                self._chat_service = ChatApplicationService(
-                    self._services.conversation_engine
-                )
-            chat_service = self._chat_service
+            chat_service = self._ensure_chat_service()
         return chat_service.chat(request)
 
     def resolution_status(self, conversation_id: str) -> Optional[str]:
@@ -134,6 +184,37 @@ class _LazyChatApplicationService:
             if chat_service is not None
             else None
         )
+
+    def record_feedback(
+        self,
+        *,
+        conversation_id: str,
+        user_id: str,
+        rating: FeedbackRating,
+        comment: Optional[str] = None,
+    ) -> None:
+        with self._lock:
+            chat_service = self._ensure_chat_service()
+        chat_service.record_feedback(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            rating=rating,
+            comment=comment,
+        )
+
+    def events_for_user(self, user_id: str) -> list[SupportEvent]:
+        with self._lock:
+            chat_service = self._chat_service
+        return list(chat_service.events_for_user(user_id)) if chat_service else []
+
+    def _ensure_chat_service(self) -> ChatApplicationService:
+        if self._chat_service is None:
+            self._services = self._application_factory()
+            self._chat_service = ChatApplicationService(
+                self._services.conversation_engine,
+                analytics_sink=getattr(self._services, "analytics_sink", None),
+            )
+        return self._chat_service
 
     def close(self) -> None:
         with self._lock:

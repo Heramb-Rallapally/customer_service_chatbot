@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.config import Settings, get_settings
+from src.analytics import AnalyticsEventSink, InMemoryAnalyticsEventSink, NoOpAnalyticsEventSink
 from src.conversation import (
     ConversationEngine,
     ConversationMemory,
@@ -67,6 +68,7 @@ class ApplicationServices:
     proactive_service: ProactiveService
     memory: ConversationMemory
     knowledge_indexer: KnowledgeIndexer
+    analytics_sink: AnalyticsEventSink = field(default_factory=NoOpAnalyticsEventSink)
     oracle_connection: Any = None
     _owns_oracle_connection: bool = field(default=False, repr=False)
     _closed: bool = field(default=False, init=False, repr=False)
@@ -110,6 +112,7 @@ def create_application(
     proactive_unsupported_issue_detector: Optional[UnsupportedIssueDetector] = None,
     memory: Optional[ConversationMemory] = None,
     llm_service: Optional[LLMService] = None,
+    analytics_sink: Optional[AnalyticsEventSink] = None,
 ) -> ApplicationServices:
     """Construct the real dependency graph or use explicitly injected doubles.
 
@@ -119,6 +122,7 @@ def create_application(
     """
 
     configured_settings = settings or get_settings()
+    resolved_analytics_sink = analytics_sink or _analytics_sink_from_settings(configured_settings)
     use_durable_memory = (
         memory is None and configured_settings.oracle_conversation_table is not None
     )
@@ -223,9 +227,19 @@ def create_application(
         proactive_service=resolved_proactive,
         memory=resolved_memory,
         knowledge_indexer=knowledge_indexer,
+        analytics_sink=resolved_analytics_sink,
         oracle_connection=connection,
         _owns_oracle_connection=owns_connection,
     )
+
+
+def _analytics_sink_from_settings(settings: Settings) -> AnalyticsEventSink:
+    mode = settings.analytics_mode.strip().lower()
+    if mode == "noop":
+        return NoOpAnalyticsEventSink()
+    if mode == "memory":
+        return InMemoryAnalyticsEventSink()
+    raise ApplicationConfigurationError("ANALYTICS_MODE must be 'noop' or 'memory'")
 
 
 def _validate_configuration(

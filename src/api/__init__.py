@@ -8,7 +8,7 @@ from .identity import (
     IdentityProvider,
     RequestStateIdentityProvider,
 )
-from .schemas import ChatRequest
+from .schemas import ChatRequest, FeedbackRequest, FeedbackResponse
 from .service import (
     ChatApplicationService,
     ConversationService,
@@ -20,6 +20,8 @@ __all__ = [
     "AuthenticatedIdentity",
     "AuthenticationRequiredError",
     "ChatRequest",
+    "FeedbackRequest",
+    "FeedbackResponse",
     "ConversationService",
     "ConversationServiceUnavailableError",
     "DevelopmentIdentityProvider",

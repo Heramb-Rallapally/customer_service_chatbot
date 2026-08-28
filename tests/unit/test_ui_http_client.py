@@ -7,6 +7,7 @@ import json
 import httpx
 import pytest
 
+from src.analytics import FeedbackRating
 from src.ui import ChatApiClientError, HttpChatApiClient
 
 
@@ -89,3 +90,54 @@ def test_http_client_validates_base_url_and_preserves_configurability() -> None:
         HttpChatApiClient("   ")
     with pytest.raises(ValueError, match="timeout_seconds"):
         HttpChatApiClient("http://api.example.test", timeout_seconds=0)
+
+
+def test_http_client_submits_feedback_and_reads_typed_analytics_events() -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/feedback":
+            captured["feedback"] = json.loads(request.content)
+            return httpx.Response(200, request=request, json={"accepted": True})
+        assert request.url.path == "/analytics/events"
+        return httpx.Response(
+            200,
+            request=request,
+            json=[
+                {
+                    "event_id": "event-1",
+                    "timestamp": "2026-08-28T10:00:00Z",
+                    "event_type": "chat_outcome",
+                    "conversation_id": "conversation-1",
+                    "user_id": "user-1",
+                    "escalation_required": False,
+                    "suggested_actions_count": 1,
+                    "citation_count": 0,
+                }
+            ],
+        )
+
+    api_client = make_client(handler)
+    api_client.submit_feedback(
+        conversation_id="conversation-1", rating=FeedbackRating.NEGATIVE, comment="Not enough detail"
+    )
+    events = api_client.analytics_events()
+    assert captured["feedback"] == {
+        "conversation_id": "conversation-1",
+        "rating": "negative",
+        "comment": "Not enough detail",
+    }
+    assert events[0].conversation_id == "conversation-1"
+
+
+def test_http_client_handles_feedback_and_analytics_failures_safely() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, request=request, json={"detail": "Oracle credentials"})
+
+    client = make_client(handler)
+    with pytest.raises(ChatApiClientError) as feedback_error:
+        client.submit_feedback(conversation_id="c", rating=FeedbackRating.POSITIVE)
+    assert "credentials" not in str(feedback_error.value)
+    with pytest.raises(ChatApiClientError) as analytics_error:
+        client.analytics_events()
+    assert "credentials" not in str(analytics_error.value)

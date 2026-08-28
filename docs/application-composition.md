@@ -47,3 +47,26 @@ proactive package does not create a second OCI client at import time.
 Tests may inject `retrieval_service`, `llm_service`, memory, proactive
 services, or individual proactive providers. Fully injected tests make no OCI
 or Oracle connection.
+
+## Optional analytics and feedback
+
+Analytics is an observer of the application, not a conversation dependency.
+`ApplicationServices` owns an injected `AnalyticsEventSink`; the default is a
+`NoOpAnalyticsEventSink`, so normal chat remains available if analytics is not
+configured. Set `ANALYTICS_MODE=memory` only for a local demo to use the
+thread-safe, process-local `InMemoryAnalyticsEventSink`. It is not durable or
+shared across workers.
+
+After a successful chat, `ChatApplicationService` records a typed
+`SupportEvent` containing outcome metadata such as resolution status,
+confidence, response timing, citations, and suggested-action count. It never
+stores raw customer or assistant messages. `POST /feedback` creates a separate
+helpfulness event after checking the authenticated user's conversation
+ownership. Analytics failures are logged as sanitized operational warnings and
+never fail a chat or feedback acknowledgement.
+
+`GET /analytics/events` is intentionally scoped to the authenticated user's
+own event snapshots for the local Streamlit view. It is not an administrative
+reporting API. `src.analytics.to_evaluation_records()` converts outcome and
+feedback metadata into dependency-free offline evaluation records for Step 8;
+it performs neither model retraining nor prompt modification.

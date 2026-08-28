@@ -82,6 +82,24 @@ The UI communicates only through FastAPI using `HttpChatApiClient`. Set
 requires configured OCI Generative AI and Oracle AI Database access; those
 services are not exercised by the credential-free test suite.
 
+## Analytics and feedback
+
+Analytics observes completed support outcomes; it does not control retrieval,
+conversation, or generation. The API records typed `SupportEvent` metadata
+(resolution/escalation state, confidence, timing, citation/action counts and
+optional feedback) without storing raw chat text. `POST /feedback` accepts
+`conversation_id`, a `positive` or `negative` rating, and an optional comment.
+Its user identity always comes from `AuthenticatedIdentity`; feedback for a
+different user's conversation receives the same safe 403 ownership response as
+chat.
+
+`ANALYTICS_MODE=noop` is the default. Set `ANALYTICS_MODE=memory` for a local,
+single-process demo to enable the Streamlit **Your support activity** view via
+the API's authenticated, user-scoped `GET /analytics/events` endpoint. This
+in-memory sink is not durable and is not a production analytics store. Event
+metadata can be transformed into offline Step 8 evaluation records, but Step 7
+does not retrain models or change prompts automatically.
+
 ## API identity and conversation ownership
 
 `POST /chat` now derives its effective `user_id` from an injected
