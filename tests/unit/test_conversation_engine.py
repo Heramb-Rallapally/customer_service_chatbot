@@ -413,3 +413,50 @@ def test_invalid_input_and_cross_user_access_are_rejected() -> None:
             user_id="user-2",
             user_message="Help",
         )
+
+
+def test_existing_user_bound_conversation_requires_matching_user_id() -> None:
+    memory = InMemoryConversationMemory()
+    memory.save(ready_state(user_id="user-1"))
+    engine, _, retriever, _ = build_engine(memory=memory)
+
+    engine.handle_message(
+        conversation_id="conversation-1",
+        user_id="user-1",
+        user_message="What should I try?",
+    )
+
+    assert len(retriever.calls) == 1
+
+    with pytest.raises(ValueError, match="another user"):
+        engine.handle_message(
+            conversation_id="conversation-1",
+            user_id="user-2",
+            user_message="What should I try?",
+        )
+
+
+def test_existing_user_bound_conversation_rejects_omitted_user_id() -> None:
+    memory = InMemoryConversationMemory()
+    memory.save(ready_state(user_id="user-1"))
+    engine, _, _, _ = build_engine(memory=memory)
+
+    with pytest.raises(ValueError, match="another user"):
+        engine.handle_message(
+            conversation_id="conversation-1",
+            user_message="What should I try?",
+        )
+
+
+def test_new_conversation_allows_and_binds_user_id() -> None:
+    engine, memory, _, _ = build_engine()
+
+    engine.handle_message(
+        conversation_id="new-conversation",
+        user_id="user-1",
+        user_message="My VPN isn't working.",
+    )
+
+    state = memory.load("new-conversation")
+    assert state is not None
+    assert state.user_id == "user-1"

@@ -115,13 +115,13 @@ class ConversationEngine:
         if not user_message:
             raise ValueError("user_message must not be empty")
 
-        state = self._memory.load(conversation_id) or ConversationState(
-            conversation_id=conversation_id,
-            user_id=user_id,
-        )
-        if state.user_id and user_id and state.user_id != user_id:
-            raise ValueError("conversation_id is already associated with another user")
-        if state.user_id is None and user_id:
+        state = self._memory.load(conversation_id)
+        if state is None:
+            state = ConversationState(conversation_id=conversation_id, user_id=user_id)
+        elif state.user_id is not None:
+            if user_id != state.user_id:
+                raise ValueError("conversation_id is already associated with another user")
+        elif user_id:
             state.user_id = user_id
 
         intent = self._intent_detector.detect(user_message, state)
